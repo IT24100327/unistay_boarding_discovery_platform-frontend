@@ -27,6 +27,30 @@ export const storage = {
     }
   },
 
+  async getRefreshToken(): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+    } catch {
+      return await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+    }
+  },
+
+  async setRefreshToken(token: string): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, token);
+    } catch {
+      await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
+    }
+  },
+
+  async removeRefreshToken(): Promise<void> {
+    try {
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+    } catch {
+      await AsyncStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    }
+  },
+
   async getUser<T>(): Promise<T | null> {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEYS.USER);
@@ -56,5 +80,6 @@ export const storage = {
   async clear(): Promise<void> {
     await AsyncStorage.multiRemove([STORAGE_KEYS.USER, STORAGE_KEYS.ONBOARDING_DONE]);
     await this.removeToken();
+    await this.removeRefreshToken();
   },
 };

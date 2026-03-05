@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'owner';
+export type UserRole = 'STUDENT' | 'OWNER' | 'ADMIN';
 
 export interface User {
   id: string;
@@ -11,7 +11,8 @@ export interface User {
   phone?: string;
   university?: string;
   nicNumber?: string;
-  emailVerified: boolean;
+  isVerified: boolean;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }

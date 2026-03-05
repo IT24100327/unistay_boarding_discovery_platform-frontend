@@ -1,3 +1,5 @@
+import type { User } from './user.types';
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -26,9 +28,23 @@ export interface RegisterOwnerRequest {
 
 export type RegisterData = RegisterStudentRequest | RegisterOwnerRequest;
 
+/** Shape returned by POST /auth/login */
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
+}
+
+/** Shape returned by POST /auth/refresh */
+export interface RefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+/** Legacy alias kept for backwards compatibility */
 export interface AuthResponse {
   token: string;
-  user: import('./user.types').User;
+  user: User;
 }
 
 export interface ForgotPasswordRequest {

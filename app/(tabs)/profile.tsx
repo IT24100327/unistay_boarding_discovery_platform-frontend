@@ -133,7 +133,7 @@ export default function ProfileScreen() {
           </Text>
           <View style={styles.badgeRow}>
             <Badge
-              label={user?.role === 'owner' ? 'Property Owner' : 'Student'}
+              label={user?.role === 'OWNER' ? 'Property Owner' : 'Student'}
               variant="primary"
               pill
             />

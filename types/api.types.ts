@@ -1,3 +1,18 @@
+export interface UniStayApiResponse<T> {
+  success: true;
+  message: string;
+  data: T;
+  timestamp: string;
+}
+
+export interface UniStayApiError {
+  success: false;
+  error: string;
+  message: string;
+  details: Array<{ field?: string; message: string }>;
+  timestamp: string;
+}
+
 export interface ApiError {
   message: string;
   errors?: Record<string, string[]>;

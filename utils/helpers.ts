@@ -30,8 +30,19 @@ export function formatCountdown(seconds: number): string {
 
 export function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'response' in error) {
-    const axiosError = error as { response?: { data?: { message?: string } } };
-    return axiosError.response?.data?.message ?? 'An error occurred';
+    const axiosError = error as {
+      response?: {
+        data?: {
+          message?: string;
+          details?: Array<{ field?: string; message: string }>;
+        };
+      };
+    };
+    const data = axiosError.response?.data;
+    if (data?.details && data.details.length > 0) {
+      return data.details.map((d) => d.message).join('\n');
+    }
+    return data?.message ?? 'An error occurred';
   }
   if (error instanceof Error) return error.message;
   return 'An unexpected error occurred';

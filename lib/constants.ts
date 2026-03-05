@@ -18,10 +18,11 @@ export const COLORS = {
   warning: '#F97316',
 };
 
-export const API_URL = 'https://api.uniboard.lk/api/v1';
+export const API_URL = 'http://localhost:3000/api';
 
 export const STORAGE_KEYS = {
   TOKEN: 'uniboard_token',
+  REFRESH_TOKEN: 'uniboard_refresh_token',
   USER: 'uniboard_user',
   ONBOARDING_DONE: 'uniboard_onboarding_done',
 };

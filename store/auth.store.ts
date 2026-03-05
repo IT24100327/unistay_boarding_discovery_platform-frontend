@@ -2,11 +2,13 @@ import { create } from 'zustand';
 import api from '@/lib/api';
 import { storage } from '@/lib/storage';
 import type { User } from '@/types/user.types';
-import type { RegisterData } from '@/types/auth.types';
+import type { RegisterData, LoginResponse, RefreshResponse } from '@/types/auth.types';
+import type { UniStayApiResponse } from '@/types/api.types';
 
 interface AuthState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   selectedRole: 'student' | 'owner' | null;
@@ -24,6 +26,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
+  refreshToken: null,
   isAuthenticated: false,
   isLoading: false,
   selectedRole: null,
@@ -35,14 +38,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email, password) => {
     set({ isLoading: true });
     try {
-      const response = await api.post<{ token: string; user: User }>('/auth/login', {
+      const response = await api.post<UniStayApiResponse<LoginResponse>>('/auth/login', {
         email,
         password,
       });
-      const { token, user } = response.data;
-      await storage.setToken(token);
+      const { accessToken, refreshToken, user } = response.data.data;
+      await storage.setToken(accessToken);
+      await storage.setRefreshToken(refreshToken);
       await storage.setUser(user);
-      set({ token, user, isAuthenticated: true });
+      set({ token: accessToken, refreshToken, user, isAuthenticated: true });
     } finally {
       set({ isLoading: false });
     }
@@ -51,22 +55,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   register: async (data) => {
     set({ isLoading: true });
     try {
-      await api.post('/auth/register', data);
+      const apiRole = data.role === 'student' ? 'STUDENT' : 'OWNER';
+      // Strip UI-only fields before sending to API
+      const { confirmPassword: _confirmPassword, ...rest } = data as RegisterData & {
+        confirmPassword?: string;
+        terms?: boolean;
+      };
+      const { terms: _terms, ...payload } = rest as typeof rest & { terms?: boolean };
+      await api.post('/auth/register', { ...payload, role: apiRole });
     } finally {
       set({ isLoading: false });
     }
   },
 
   logout: async () => {
+    const refreshToken = get().refreshToken ?? (await storage.getRefreshToken());
+    if (refreshToken) {
+      try {
+        await api.post('/auth/logout', { refreshToken });
+      } catch {
+        // best-effort: ignore errors so local state is always cleared
+      }
+    }
     await storage.clear();
-    set({ user: null, token: null, isAuthenticated: false });
+    set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
   },
 
   updateProfile: async (data) => {
     set({ isLoading: true });
     try {
-      const response = await api.put<{ user: User }>('/users/me', data);
-      const updatedUser = response.data.user;
+      const response = await api.put<UniStayApiResponse<{ user: User }>>('/users/me', data);
+      const updatedUser = response.data.data.user;
       await storage.setUser(updatedUser);
       set({ user: updatedUser });
     } finally {
@@ -75,12 +94,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   checkAuth: async () => {
-    const token = await storage.getToken();
-    if (!token) return false;
+    const storedRefreshToken = await storage.getRefreshToken();
+    if (!storedRefreshToken) return false;
     try {
-      const response = await api.get<{ user: User }>('/auth/me');
-      const user = response.data.user;
-      set({ token, user, isAuthenticated: true });
+      const response = await api.post<UniStayApiResponse<RefreshResponse>>('/auth/refresh', {
+        refreshToken: storedRefreshToken,
+      });
+      const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+      await storage.setToken(accessToken);
+      await storage.setRefreshToken(newRefreshToken);
+      const user = await storage.getUser<User>();
+      if (!user) return false;
+      set({ token: accessToken, refreshToken: newRefreshToken, user, isAuthenticated: true });
       return true;
     } catch {
       await get().logout();
@@ -90,9 +115,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   hydrate: async () => {
     const token = await storage.getToken();
+    const refreshToken = await storage.getRefreshToken();
     const user = await storage.getUser<User>();
-    if (token && user) {
-      set({ token, user, isAuthenticated: true });
+    if (token && refreshToken && user) {
+      set({ token, refreshToken, user, isAuthenticated: true });
     }
   },
 }));

@@ -127,7 +127,7 @@ export default function EditProfileScreen() {
             )}
           />
 
-          {user?.role === 'student' ? (
+          {user?.role === 'STUDENT' ? (
             <Controller
               control={control}
               name="university"
