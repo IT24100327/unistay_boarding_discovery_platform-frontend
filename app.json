@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "UniBoard",
+    "slug": "uniboard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "uniboard",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#4A7BF7"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.uniboard.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#4A7BF7"
+      },
+      "package": "com.uniboard.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-image-picker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
