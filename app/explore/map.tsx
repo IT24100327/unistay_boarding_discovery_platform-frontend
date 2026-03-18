@@ -10,56 +10,64 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SAMPLE_BOARDINGS } from '@/store/boarding.store';
 import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
 
-interface MarkerData {
-  boarding: Boarding;
-  x: number;
-  y: number;
-}
-
-const MARKERS: MarkerData[] = SAMPLE_BOARDINGS.map((b, i) => ({
-  boarding: b,
-  x: 40 + (i % 3) * 100,
-  y: 80 + Math.floor(i / 3) * 120,
-}));
+// Sri Lanka centre as the default region
+const INITIAL_REGION = {
+  latitude: 7.8731,
+  longitude: 80.7718,
+  latitudeDelta: 4.0,
+  longitudeDelta: 4.0,
+};
 
 export default function MapViewScreen() {
   const [selected, setSelected] = useState<Boarding | null>(null);
   const [query, setQuery] = useState('');
 
+  const filtered = query
+    ? SAMPLE_BOARDINGS.filter(
+        (b) =>
+          b.title.toLowerCase().includes(query.toLowerCase()) ||
+          b.city.toLowerCase().includes(query.toLowerCase()),
+      )
+    : SAMPLE_BOARDINGS;
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Map-like background */}
-      <View style={styles.mapCanvas}>
-        {/* Grid lines to simulate a map */}
-        {[...Array(8)].map((_, i) => (
-          <View key={`h${i}`} style={[styles.gridLineH, { top: i * 80 }]} />
-        ))}
-        {[...Array(5)].map((_, i) => (
-          <View key={`v${i}`} style={[styles.gridLineV, { left: i * 80 }]} />
-        ))}
-
-        {/* Boarding Markers */}
-        {MARKERS.map(({ boarding, x, y }) => (
-          <TouchableOpacity
+      <MapView
+        style={styles.map}
+        provider={PROVIDER_GOOGLE}
+        initialRegion={INITIAL_REGION}
+        showsUserLocation
+        showsMyLocationButton
+      >
+        {filtered.map((boarding) => (
+          <Marker
             key={boarding.id}
-            style={[styles.marker, { left: x, top: y }]}
+            coordinate={{ latitude: boarding.latitude ?? 7.8731, longitude: boarding.longitude ?? 80.7718 }}
             onPress={() => setSelected(selected?.id === boarding.id ? null : boarding)}
-            activeOpacity={0.8}
           >
-            <Text style={styles.markerText}>LKR {(boarding.monthlyRent / 1000).toFixed(0)}k</Text>
-          </TouchableOpacity>
+            <View style={styles.marker}>
+              <Text style={styles.markerText}>
+                LKR {(boarding.monthlyRent / 1000).toFixed(0)}k
+              </Text>
+            </View>
+            <Callout tooltip>
+              <View style={styles.callout}>
+                <Text style={styles.calloutTitle} numberOfLines={1}>
+                  {boarding.title}
+                </Text>
+                <Text style={styles.calloutSub}>
+                  {boarding.city}, {boarding.district}
+                </Text>
+              </View>
+            </Callout>
+          </Marker>
         ))}
-
-        {/* Map label */}
-        <View style={styles.mapLabel}>
-          <Ionicons name="map-outline" size={16} color={COLORS.textSecondary} />
-          <Text style={styles.mapLabelText}>OpenStreetMap</Text>
-        </View>
-      </View>
+      </MapView>
 
       {/* Top overlay: Back + Search + Buttons */}
       <View style={styles.topOverlay}>
@@ -124,46 +132,11 @@ export default function MapViewScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#E8F0E8' },
-
-  // Map canvas
-  mapCanvas: {
-    flex: 1,
-    backgroundColor: '#E8F0E8',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  gridLineH: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(0,0,0,0.06)',
-  },
-  gridLineV: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: 'rgba(0,0,0,0.06)',
-  },
-  mapLabel: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  mapLabelText: { fontSize: 11, color: COLORS.textSecondary },
+  container: { flex: 1 },
+  map: { flex: 1 },
 
   // Markers
   marker: {
-    position: 'absolute',
     backgroundColor: COLORS.primary,
     borderRadius: 20,
     paddingHorizontal: 10,
@@ -175,6 +148,21 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   markerText: { fontSize: 12, fontWeight: '700', color: COLORS.white },
+
+  // Callout
+  callout: {
+    backgroundColor: COLORS.white,
+    borderRadius: 10,
+    padding: 8,
+    minWidth: 140,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  calloutTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  calloutSub: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
 
   // Top overlay
   topOverlay: {
@@ -271,3 +259,4 @@ const styles = StyleSheet.create({
   },
   viewDetailsBtnText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
 });
+
