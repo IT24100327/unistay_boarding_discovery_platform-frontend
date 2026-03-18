@@ -23,7 +23,7 @@ const TYPE_LABELS: Record<string, string> = {
   SINGLE_ROOM: 'Single Room',
   SHARED_ROOM: 'Shared Room',
   ANNEX: 'Annex',
-  FULL_HOUSE: 'Full House',
+  HOUSE: 'House',
 };
 
 const GENDER_LABELS: Record<string, string> = {
@@ -129,22 +129,16 @@ export default function BoardingDetailsScreen() {
           <Text style={styles.title}>{boarding.title}</Text>
           <View style={styles.addressRow}>
             <Ionicons name="location-outline" size={14} color={COLORS.gray} />
-            <Text style={styles.addressText}>{boarding.addressLine}, {boarding.city}</Text>
+            <Text style={styles.addressText}>{boarding.address}, {boarding.city}</Text>
             <TouchableOpacity onPress={() => router.push(`/explore/map` as never)}>
               <Text style={styles.viewOnMap}>View on Map</Text>
             </TouchableOpacity>
           </View>
-          {boarding.nearestUniversity && (
+          {boarding.nearUniversity && (
             <Text style={styles.distanceText}>
-              {boarding.distanceToUniversity} km from {boarding.nearestUniversity}
+              Near {boarding.nearUniversity}
             </Text>
           )}
-          <View style={styles.ratingRow}>
-            <StarRow rating={boarding.averageRating} />
-            <TouchableOpacity onPress={() => router.push(`/boardings/${slug}/reviews` as never)}>
-              <Text style={styles.ratingLink}>{boarding.averageRating.toFixed(1)} ({boarding.reviewCount} reviews)</Text>
-            </TouchableOpacity>
-          </View>
           <View style={styles.ownerRow}>
             <View style={styles.ownerAvatar}>
               <Text style={styles.ownerAvatarText}>{boarding.owner.firstName.charAt(0)}</Text>
@@ -162,11 +156,6 @@ export default function BoardingDetailsScreen() {
               <Text style={styles.pricingValue}>LKR {boarding.monthlyRent.toLocaleString()}</Text>
               <Text style={styles.pricingLabel}>Monthly Rent</Text>
             </View>
-            <View style={styles.pricingDivider} />
-            <View style={styles.pricingItem}>
-              <Text style={styles.pricingValue}>LKR {boarding.depositAmount.toLocaleString()}</Text>
-              <Text style={styles.pricingLabel}>Deposit</Text>
-            </View>
           </View>
 
           <View style={styles.divider} />
@@ -175,10 +164,10 @@ export default function BoardingDetailsScreen() {
           <Text style={styles.sectionTitle}>Details</Text>
           <View style={styles.detailsRow}>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{TYPE_LABELS[boarding.type]}</Text>
+              <Text style={styles.badgeText}>{TYPE_LABELS[boarding.boardingType]}</Text>
             </View>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{GENDER_LABELS[boarding.genderPreference]}</Text>
+              <Text style={styles.badgeText}>{GENDER_LABELS[boarding.genderPref]}</Text>
             </View>
             <View style={[styles.badge, isAvailable ? styles.badgeAvailable : styles.badgeFull]}>
               <Text style={[styles.badgeText, isAvailable ? styles.badgeAvailableText : styles.badgeFullText]}>
@@ -195,11 +184,23 @@ export default function BoardingDetailsScreen() {
           {/* Amenities */}
           <Text style={styles.sectionTitle}>Amenities</Text>
           <View style={styles.amenitiesGrid}>
-            <AmenityRow icon="wifi-outline" label="WiFi" active={boarding.amenities.wifi} />
-            <AmenityRow icon="car-outline" label="Parking" active={boarding.amenities.parking} />
-            <AmenityRow icon="bed-outline" label="Furnished" active={boarding.amenities.furnished} />
-            <AmenityRow icon="snow-outline" label="AC" active={boarding.amenities.ac} />
-            <AmenityRow icon="water-outline" label="Hot Water" active={boarding.amenities.hotWater} />
+            {[
+              { name: 'WIFI', icon: 'wifi-outline', label: 'WiFi' },
+              { name: 'PARKING', icon: 'car-outline', label: 'Parking' },
+              { name: 'AIR_CONDITIONING', icon: 'snow-outline', label: 'AC' },
+              { name: 'HOT_WATER', icon: 'water-outline', label: 'Hot Water' },
+              { name: 'SECURITY', icon: 'shield-checkmark-outline', label: 'Security' },
+              { name: 'KITCHEN', icon: 'restaurant-outline', label: 'Kitchen' },
+              { name: 'LAUNDRY', icon: 'shirt-outline', label: 'Laundry' },
+              { name: 'GENERATOR', icon: 'flash-outline', label: 'Generator' },
+            ].map(({ name, icon, label }) => (
+              <AmenityRow
+                key={name}
+                icon={icon}
+                label={label}
+                active={boarding.amenities.some((a) => a.name === name)}
+              />
+            ))}
           </View>
 
           <View style={styles.divider} />
@@ -218,13 +219,13 @@ export default function BoardingDetailsScreen() {
           <View style={styles.divider} />
 
           {/* House Rules */}
-          {boarding.houseRules.length > 0 && (
+          {boarding.rules.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>House Rules</Text>
-              {boarding.houseRules.map((rule, i) => (
-                <View key={i} style={styles.ruleItem}>
+              {boarding.rules.map((ruleItem) => (
+                <View key={ruleItem.id} style={styles.ruleItem}>
                   <Ionicons name="ellipse" size={6} color={COLORS.primary} />
-                  <Text style={styles.ruleText}>{rule}</Text>
+                  <Text style={styles.ruleText}>{ruleItem.rule}</Text>
                 </View>
               ))}
               <View style={styles.divider} />
@@ -238,7 +239,7 @@ export default function BoardingDetailsScreen() {
             onPress={() => router.push('/explore/map' as never)}
           >
             <Ionicons name="map-outline" size={36} color={COLORS.gray} />
-            <Text style={styles.mapPlaceholderText}>{boarding.addressLine}, {boarding.city}</Text>
+            <Text style={styles.mapPlaceholderText}>{boarding.address}, {boarding.city}</Text>
             <Text style={styles.mapPlaceholderSub}>Tap to view on map</Text>
           </TouchableOpacity>
 
@@ -247,11 +248,6 @@ export default function BoardingDetailsScreen() {
           {/* Reviews */}
           <View style={styles.reviewsHeader}>
             <Text style={styles.sectionTitle}>Reviews</Text>
-            <View style={styles.overallRating}>
-              <Ionicons name="star" size={16} color="#F59E0B" />
-              <Text style={styles.overallRatingText}>{boarding.averageRating.toFixed(1)}</Text>
-              <Text style={styles.overallRatingCount}>({boarding.reviewCount})</Text>
-            </View>
           </View>
           {SAMPLE_REVIEWS.slice(0, 2).map((review) => (
             <View key={review.id} style={styles.reviewCard}>

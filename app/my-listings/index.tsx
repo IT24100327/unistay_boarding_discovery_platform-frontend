@@ -60,7 +60,7 @@ export default function MyListingsScreen() {
   };
 
   const renderItem = ({ item }: { item: Boarding }) => {
-    const primaryImage = item.images.find((img) => img.isPrimary) ?? item.images[0];
+    const primaryImage = item.images[0];
     return (
       <View style={styles.card}>
         <View style={styles.cardImageContainer}>

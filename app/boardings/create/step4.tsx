@@ -52,8 +52,8 @@ export default function CreateStep4Screen() {
           const newImage: BoardingImage = {
             id: `img-${Date.now()}`,
             url,
-            isPrimary: images.length === 0,
-            order: images.length,
+            publicId: '',
+            createdAt: new Date().toISOString(),
           };
           setImages((prev) => [...prev, newImage]);
         },
@@ -63,16 +63,18 @@ export default function CreateStep4Screen() {
   };
 
   const handleDelete = (id: string) => {
-    setImages((prev) => {
-      const filtered = prev.filter((img) => img.id !== id);
-      return filtered.map((img, i) => ({ ...img, isPrimary: i === 0, order: i }));
-    });
+    setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
   const handleSetPrimary = (id: string) => {
-    setImages((prev) =>
-      prev.map((img) => ({ ...img, isPrimary: img.id === id })),
-    );
+    setImages((prev) => {
+      const idx = prev.findIndex((img) => img.id === id);
+      if (idx <= 0) return prev;
+      const reordered = [...prev];
+      const [moved] = reordered.splice(idx, 1);
+      reordered.unshift(moved);
+      return reordered;
+    });
   };
 
   const handleNext = () => {

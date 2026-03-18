@@ -19,7 +19,7 @@ const BOARDING_TYPES: { label: string; value: BoardingType }[] = [
   { label: 'Single Room', value: 'SINGLE_ROOM' },
   { label: 'Shared Room', value: 'SHARED_ROOM' },
   { label: 'Annex', value: 'ANNEX' },
-  { label: 'Full House', value: 'FULL_HOUSE' },
+  { label: 'Full House', value: 'HOUSE' },
 ];
 
 const GENDER_OPTIONS: { label: string; value: GenderPreference }[] = [
@@ -36,10 +36,9 @@ export default function EditBoardingScreen() {
 
   const [title, setTitle] = useState(boarding.title);
   const [description, setDescription] = useState(boarding.description);
-  const [type, setType] = useState<BoardingType>(boarding.type);
-  const [gender, setGender] = useState<GenderPreference>(boarding.genderPreference);
+  const [type, setType] = useState<BoardingType>(boarding.boardingType);
+  const [gender, setGender] = useState<GenderPreference>(boarding.genderPref);
   const [rent, setRent] = useState(String(boarding.monthlyRent));
-  const [deposit, setDeposit] = useState(String(boarding.depositAmount));
   const [maxOccupants, setMaxOccupants] = useState(String(boarding.maxOccupants));
 
   const handleSave = () => {
@@ -138,14 +137,6 @@ export default function EditBoardingScreen() {
           style={styles.input}
           value={rent}
           onChangeText={setRent}
-          keyboardType="number-pad"
-        />
-
-        <Text style={styles.label}>Deposit (LKR)</Text>
-        <TextInput
-          style={styles.input}
-          value={deposit}
-          onChangeText={setDeposit}
           keyboardType="number-pad"
         />
 

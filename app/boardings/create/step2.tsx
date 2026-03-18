@@ -35,7 +35,7 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
 export default function CreateStep2Screen() {
   const { createDraft, setCreateDraft } = useBoardingStore();
 
-  const [address, setAddress] = useState(createDraft.addressLine ?? '');
+  const [address, setAddress] = useState(createDraft.address ?? '');
   const [city, setCity] = useState(createDraft.city ?? '');
   const [district, setDistrict] = useState(createDraft.district ?? '');
   const [showDistricts, setShowDistricts] = useState(false);
@@ -59,7 +59,7 @@ export default function CreateStep2Screen() {
   const handleNext = () => {
     if (!validate()) return;
     setCreateDraft({
-      addressLine: address.trim(),
+      address: address.trim(),
       city: city.trim(),
       district,
       latitude: parseFloat(lat) || undefined,

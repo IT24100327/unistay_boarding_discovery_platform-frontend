@@ -29,7 +29,7 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
 
 export default function CreateStep5Screen() {
   const { createDraft, setCreateDraft, clearCreateDraft } = useBoardingStore();
-  const [rules, setRules] = useState<string[]>(createDraft.houseRules ?? []);
+  const [rules, setRules] = useState<string[]>(createDraft.rules ?? []);
   const [showRuleInput, setShowRuleInput] = useState(false);
   const [newRule, setNewRule] = useState('');
   const [successVisible, setSuccessVisible] = useState(false);
@@ -46,20 +46,20 @@ export default function CreateStep5Screen() {
   };
 
   const handleSaveDraft = () => {
-    setCreateDraft({ houseRules: rules });
+    setCreateDraft({ rules });
     Alert.alert('Draft Saved', 'Your listing has been saved as a draft.', [
       { text: 'OK', onPress: () => { clearCreateDraft(); router.push('/my-listings' as never); } },
     ]);
   };
 
   const handleSubmit = () => {
-    setCreateDraft({ houseRules: rules });
+    setCreateDraft({ rules });
     setSuccessVisible(true);
   };
 
   const TYPE_LABELS: Record<string, string> = {
     SINGLE_ROOM: 'Single Room', SHARED_ROOM: 'Shared Room',
-    ANNEX: 'Annex', FULL_HOUSE: 'Full House',
+    ANNEX: 'Annex', HOUSE: 'House',
   };
 
   return (
@@ -120,7 +120,7 @@ export default function CreateStep5Screen() {
           <Text style={styles.summaryValue}>{createDraft.title || '—'}</Text>
 
           <Text style={styles.summaryLabel}>Type</Text>
-          <Text style={styles.summaryValue}>{createDraft.type ? TYPE_LABELS[createDraft.type] : '—'}</Text>
+          <Text style={styles.summaryValue}>{createDraft.boardingType ? TYPE_LABELS[createDraft.boardingType] : '—'}</Text>
 
           <Text style={styles.summaryLabel}>Monthly Rent</Text>
           <Text style={styles.summaryValue}>
@@ -129,19 +129,17 @@ export default function CreateStep5Screen() {
 
           <Text style={styles.summaryLabel}>Address</Text>
           <Text style={styles.summaryValue}>
-            {[createDraft.addressLine, createDraft.city, createDraft.district].filter(Boolean).join(', ') || '—'}
+            {[createDraft.address, createDraft.city, createDraft.district].filter(Boolean).join(', ') || '—'}
           </Text>
 
           <Text style={styles.summaryLabel}>Amenities</Text>
           <View style={styles.amenitySummaryRow}>
-            {createDraft.amenities ? (
-              Object.entries(createDraft.amenities)
-                .filter(([, v]) => v)
-                .map(([k]) => (
-                  <View key={k} style={styles.amenityChip}>
-                    <Text style={styles.amenityChipText}>{k.toUpperCase()}</Text>
-                  </View>
-                ))
+            {(createDraft.amenities ?? []).length > 0 ? (
+              (createDraft.amenities ?? []).map((amenity) => (
+                <View key={amenity} style={styles.amenityChip}>
+                  <Text style={styles.amenityChipText}>{amenity.replace(/_/g, ' ')}</Text>
+                </View>
+              ))
             ) : (
               <Text style={styles.summaryValue}>None selected</Text>
             )}

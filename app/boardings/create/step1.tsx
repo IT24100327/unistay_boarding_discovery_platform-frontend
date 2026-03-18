@@ -19,7 +19,7 @@ const BOARDING_TYPES: { label: string; value: BoardingType }[] = [
   { label: 'Single Room', value: 'SINGLE_ROOM' },
   { label: 'Shared Room', value: 'SHARED_ROOM' },
   { label: 'Annex', value: 'ANNEX' },
-  { label: 'Full House', value: 'FULL_HOUSE' },
+  { label: 'House', value: 'HOUSE' },
 ];
 
 const GENDER_OPTIONS: { label: string; value: GenderPreference }[] = [
@@ -59,13 +59,11 @@ export default function CreateStep1Screen() {
 
   const [title, setTitle] = useState(createDraft.title ?? '');
   const [description, setDescription] = useState(createDraft.description ?? '');
-  const [type, setType] = useState<BoardingType | ''>(createDraft.type ?? '');
-  const [gender, setGender] = useState<GenderPreference | ''>(createDraft.genderPreference ?? '');
+  const [type, setType] = useState<BoardingType | ''>(createDraft.boardingType ?? '');
+  const [gender, setGender] = useState<GenderPreference | ''>(createDraft.genderPref ?? '');
   const [maxOccupants, setMaxOccupants] = useState(String(createDraft.maxOccupants ?? '1'));
   const [rent, setRent] = useState(String(createDraft.monthlyRent ?? ''));
-  const [deposit, setDeposit] = useState(String(createDraft.depositAmount ?? ''));
-  const [university, setUniversity] = useState(createDraft.nearestUniversity ?? '');
-  const [distance, setDistance] = useState(String(createDraft.distanceToUniversity ?? ''));
+  const [university, setUniversity] = useState(createDraft.nearUniversity ?? '');
   const [showUniList, setShowUniList] = useState(false);
 
   const validate = () => {
@@ -81,13 +79,11 @@ export default function CreateStep1Screen() {
     setCreateDraft({
       title: title.trim(),
       description: description.trim(),
-      type: type as BoardingType,
-      genderPreference: gender as GenderPreference,
+      boardingType: type as BoardingType,
+      genderPref: gender as GenderPreference,
       maxOccupants: parseInt(maxOccupants, 10) || 1,
       monthlyRent: parseInt(rent, 10),
-      depositAmount: parseInt(deposit, 10) || 0,
-      nearestUniversity: university,
-      distanceToUniversity: parseFloat(distance) || 0,
+      nearUniversity: university,
     });
     router.push('/boardings/create/step2' as never);
   };
@@ -96,8 +92,8 @@ export default function CreateStep1Screen() {
     setCreateDraft({
       title: title.trim(),
       description: description.trim(),
-      type: type as BoardingType,
-      genderPreference: gender as GenderPreference,
+      boardingType: type as BoardingType,
+      genderPref: gender as GenderPreference,
       monthlyRent: parseInt(rent, 10) || 0,
     });
     Alert.alert('Saved', 'Draft saved successfully.', [
@@ -194,16 +190,6 @@ export default function CreateStep1Screen() {
           keyboardType="number-pad"
         />
 
-        <Text style={styles.label}>Deposit Amount (LKR)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. 30000"
-          placeholderTextColor={COLORS.grayBorder}
-          value={deposit}
-          onChangeText={setDeposit}
-          keyboardType="number-pad"
-        />
-
         <Text style={styles.label}>Nearest University</Text>
         <TouchableOpacity
           style={styles.dropdown}
@@ -228,16 +214,6 @@ export default function CreateStep1Screen() {
             ))}
           </View>
         )}
-
-        <Text style={styles.label}>Distance to University (km)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. 0.5"
-          placeholderTextColor={COLORS.grayBorder}
-          value={distance}
-          onChangeText={setDistance}
-          keyboardType="decimal-pad"
-        />
 
         <View style={{ height: 100 }} />
       </ScrollView>

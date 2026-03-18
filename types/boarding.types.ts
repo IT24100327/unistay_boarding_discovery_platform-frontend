@@ -1,58 +1,82 @@
-export type BoardingType = 'SINGLE_ROOM' | 'SHARED_ROOM' | 'ANNEX' | 'FULL_HOUSE';
+export type BoardingType = 'SINGLE_ROOM' | 'SHARED_ROOM' | 'ANNEX' | 'HOUSE';
 export type GenderPreference = 'MALE' | 'FEMALE' | 'ANY';
 export type BoardingStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'ACTIVE' | 'INACTIVE' | 'REJECTED';
 
-export interface BoardingAmenities {
-  wifi: boolean;
-  parking: boolean;
-  furnished: boolean;
-  ac: boolean;
-  hotWater: boolean;
+export type AmenityName =
+  | 'WIFI'
+  | 'AIR_CONDITIONING'
+  | 'HOT_WATER'
+  | 'LAUNDRY'
+  | 'PARKING'
+  | 'SECURITY'
+  | 'KITCHEN'
+  | 'GYM'
+  | 'SWIMMING_POOL'
+  | 'STUDY_ROOM'
+  | 'COMMON_AREA'
+  | 'BALCONY'
+  | 'GENERATOR'
+  | 'WATER_TANK';
+
+export interface BoardingAmenity {
+  id: string;
+  name: AmenityName;
+  createdAt: string;
+}
+
+export interface BoardingRule {
+  id: string;
+  rule: string;
 }
 
 export interface BoardingImage {
   id: string;
   url: string;
-  isPrimary: boolean;
-  order: number;
+  publicId: string;
+  createdAt: string;
 }
 
 export interface BoardingOwner {
   id: string;
   firstName: string;
   lastName: string;
-  avatar?: string;
+  phone: string;
 }
 
 export interface Boarding {
   id: string;
+  ownerId: string;
   slug: string;
   title: string;
   description: string;
-  type: BoardingType;
-  genderPreference: GenderPreference;
+  boardingType: BoardingType;
+  genderPref: GenderPreference;
   monthlyRent: number;
-  depositAmount: number;
   maxOccupants: number;
   currentOccupants: number;
   status: BoardingStatus;
-  addressLine: string;
+  address: string;
   city: string;
   district: string;
   latitude?: number;
   longitude?: number;
-  nearestUniversity?: string;
-  distanceToUniversity?: number;
-  amenities: BoardingAmenities;
+  nearUniversity?: string;
+  rejectionReason: string | null;
+  isDeleted: boolean;
+  amenities: BoardingAmenity[];
   images: BoardingImage[];
-  houseRules: string[];
+  rules: BoardingRule[];
   owner: BoardingOwner;
-  averageRating: number;
-  reviewCount: number;
-  viewCount: number;
-  saveCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SavedBoarding {
+  id: string;
+  boardingId: string;
+  studentId: string;
+  createdAt: string;
+  boarding: Boarding;
 }
 
 export interface BoardingReview {
@@ -68,13 +92,12 @@ export interface BoardingReview {
 export interface BoardingFilters {
   district?: string;
   city?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  types?: BoardingType[];
-  genderPreference?: GenderPreference;
-  amenities?: Partial<BoardingAmenities>;
-  maxDistance?: number;
-  university?: string;
+  minRent?: number;
+  maxRent?: number;
+  boardingType?: BoardingType;
+  genderPref?: GenderPreference;
+  amenities?: AmenityName[];
+  nearUniversity?: string;
 }
 
 export type SortOption = 'RELEVANCE' | 'PRICE_ASC' | 'PRICE_DESC' | 'NEWEST';
@@ -82,19 +105,18 @@ export type SortOption = 'RELEVANCE' | 'PRICE_ASC' | 'PRICE_DESC' | 'NEWEST';
 export interface CreateBoardingData {
   title: string;
   description: string;
-  type: BoardingType | '';
-  genderPreference: GenderPreference | '';
+  boardingType: BoardingType | '';
+  genderPref: GenderPreference | '';
   maxOccupants: number;
+  currentOccupants: number;
   monthlyRent: number;
-  depositAmount: number;
-  nearestUniversity: string;
-  distanceToUniversity: number;
-  addressLine: string;
+  nearUniversity: string;
+  address: string;
   city: string;
   district: string;
   latitude?: number;
   longitude?: number;
-  amenities: BoardingAmenities;
+  amenities: AmenityName[];
   images: BoardingImage[];
-  houseRules: string[];
+  rules: string[];
 }

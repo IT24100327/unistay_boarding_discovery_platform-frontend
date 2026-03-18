@@ -11,14 +11,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBoardingStore } from '@/store/boarding.store';
 import { COLORS } from '@/lib/constants';
-import type { BoardingAmenities } from '@/types/boarding.types';
+import type { AmenityName } from '@/types/boarding.types';
 
-const AMENITY_OPTIONS: { key: keyof BoardingAmenities; label: string; icon: string; description: string }[] = [
-  { key: 'furnished', label: 'Furnished', icon: 'bed-outline', description: 'Beds, wardrobes, and basic furniture included' },
-  { key: 'wifi', label: 'WiFi', icon: 'wifi-outline', description: 'High-speed internet connection' },
-  { key: 'parking', label: 'Parking', icon: 'car-outline', description: 'Dedicated vehicle parking available' },
-  { key: 'ac', label: 'Air Conditioning', icon: 'snow-outline', description: 'Air conditioning in rooms' },
-  { key: 'hotWater', label: 'Hot Water', icon: 'water-outline', description: '24/7 hot water supply' },
+const AMENITY_OPTIONS: { key: AmenityName; label: string; icon: string; description: string }[] = [
+  { key: 'WIFI', label: 'WiFi', icon: 'wifi-outline', description: 'High-speed internet connection' },
+  { key: 'PARKING', label: 'Parking', icon: 'car-outline', description: 'Dedicated vehicle parking available' },
+  { key: 'AIR_CONDITIONING', label: 'Air Conditioning', icon: 'snow-outline', description: 'Air conditioning in rooms' },
+  { key: 'HOT_WATER', label: 'Hot Water', icon: 'water-outline', description: '24/7 hot water supply' },
+  { key: 'SECURITY', label: 'Security', icon: 'shield-checkmark-outline', description: '24/7 security service' },
+  { key: 'KITCHEN', label: 'Kitchen', icon: 'restaurant-outline', description: 'Shared or private kitchen access' },
+  { key: 'LAUNDRY', label: 'Laundry', icon: 'shirt-outline', description: 'Laundry facilities available' },
+  { key: 'GENERATOR', label: 'Generator', icon: 'flash-outline', description: 'Backup power generator' },
+  { key: 'WATER_TANK', label: 'Water Tank', icon: 'water-outline', description: 'Overhead water storage tank' },
+  { key: 'GYM', label: 'Gym', icon: 'barbell-outline', description: 'Fitness center on premises' },
+  { key: 'SWIMMING_POOL', label: 'Swimming Pool', icon: 'water-outline', description: 'Swimming pool available' },
+  { key: 'STUDY_ROOM', label: 'Study Room', icon: 'library-outline', description: 'Quiet study room available' },
+  { key: 'COMMON_AREA', label: 'Common Area', icon: 'people-outline', description: 'Shared common lounge area' },
+  { key: 'BALCONY', label: 'Balcony', icon: 'home-outline', description: 'Private or shared balcony' },
 ];
 
 function ProgressBar({ step, total }: { step: number; total: number }) {
@@ -35,20 +44,18 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
 export default function CreateStep3Screen() {
   const { createDraft, setCreateDraft } = useBoardingStore();
 
-  const [amenities, setAmenities] = useState<BoardingAmenities>({
-    furnished: createDraft.amenities?.furnished ?? false,
-    wifi: createDraft.amenities?.wifi ?? false,
-    parking: createDraft.amenities?.parking ?? false,
-    ac: createDraft.amenities?.ac ?? false,
-    hotWater: createDraft.amenities?.hotWater ?? false,
-  });
+  const [selectedAmenities, setSelectedAmenities] = useState<AmenityName[]>(
+    createDraft.amenities ?? [],
+  );
 
-  const toggle = (key: keyof BoardingAmenities) => {
-    setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggle = (key: AmenityName) => {
+    setSelectedAmenities((prev) =>
+      prev.includes(key) ? prev.filter((a) => a !== key) : [...prev, key],
+    );
   };
 
   const handleNext = () => {
-    setCreateDraft({ amenities });
+    setCreateDraft({ amenities: selectedAmenities });
     router.push('/boardings/create/step4' as never);
   };
 
@@ -69,7 +76,7 @@ export default function CreateStep3Screen() {
         <Text style={styles.subtitle}>Select all amenities available at your property</Text>
 
         {AMENITY_OPTIONS.map(({ key, label, icon, description }) => {
-          const active = amenities[key];
+          const active = selectedAmenities.includes(key);
           return (
             <TouchableOpacity
               key={key}

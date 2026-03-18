@@ -20,7 +20,7 @@ import type { Boarding } from '@/types/boarding.types';
 function BoardingCard({ item, showOccupancy }: { item: Boarding; showOccupancy?: boolean }) {
   const { toggleSaved, isSaved } = useBoardingStore();
   const saved = isSaved(item.id);
-  const primaryImage = item.images.find((img) => img.isPrimary) ?? item.images[0];
+  const primaryImage = item.images[0];
 
   return (
     <TouchableOpacity
@@ -64,10 +64,6 @@ function BoardingCard({ item, showOccupancy }: { item: Boarding; showOccupancy?:
         </Text>
         <View style={styles.boardingFooter}>
           <Text style={styles.boardingPrice}>LKR {item.monthlyRent.toLocaleString()}/mo</Text>
-          <View style={styles.ratingRow}>
-            <Ionicons name="star" size={11} color="#F59E0B" />
-            <Text style={styles.ratingText}>{item.averageRating.toFixed(1)}</Text>
-          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -456,8 +452,6 @@ const styles = StyleSheet.create({
   boardingAddress: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
   boardingFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   boardingPrice: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  ratingText: { fontSize: 11, color: COLORS.text, fontWeight: '600' },
 
   // Marketplace
   marketplaceRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 20 },

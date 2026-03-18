@@ -26,15 +26,15 @@ const SORT_OPTIONS: { label: string; value: SortOption }[] = [
 
 function AmenityIcon({ name, active }: { name: string; active: boolean }) {
   const iconMap: Record<string, string> = {
-    wifi: 'wifi-outline',
-    parking: 'car-outline',
-    furnished: 'bed-outline',
-    ac: 'snow-outline',
-    hotWater: 'water-outline',
+    WIFI: 'wifi-outline',
+    PARKING: 'car-outline',
+    AIR_CONDITIONING: 'snow-outline',
+    HOT_WATER: 'water-outline',
+    SECURITY: 'shield-checkmark-outline',
   };
   return (
     <Ionicons
-      name={iconMap[name] as never}
+      name={(iconMap[name] ?? 'ellipse-outline') as never}
       size={14}
       color={active ? COLORS.primary : COLORS.grayBorder}
     />
@@ -46,19 +46,21 @@ function BoardingListCard({ item }: { item: Boarding }) {
   const { toggleSaved, isSaved } = useBoardingStore();
   const saved = isSaved(item.id);
   const isStudent = user?.role !== 'OWNER';
-  const primaryImage = item.images.find((img) => img.isPrimary) ?? item.images[0];
+  const primaryImage = item.images[0];
 
   const typeLabel: Record<string, string> = {
     SINGLE_ROOM: 'Single Room',
     SHARED_ROOM: 'Shared Room',
     ANNEX: 'Annex',
-    FULL_HOUSE: 'Full House',
+    HOUSE: 'House',
   };
   const genderLabel: Record<string, string> = {
     MALE: 'Male Only',
     FEMALE: 'Female Only',
     ANY: 'Any Gender',
   };
+
+  const topAmenityNames = ['WIFI', 'PARKING', 'AIR_CONDITIONING', 'HOT_WATER', 'SECURITY'];
 
   return (
     <TouchableOpacity
@@ -85,28 +87,26 @@ function BoardingListCard({ item }: { item: Boarding }) {
           )}
         </View>
         <Text style={styles.listCardAddress} numberOfLines={1}>
-          <Ionicons name="location-outline" size={11} color={COLORS.gray} /> {item.addressLine}, {item.city}
+          <Ionicons name="location-outline" size={11} color={COLORS.gray} /> {item.address}, {item.city}
         </Text>
         <Text style={styles.listCardPrice}>LKR {item.monthlyRent.toLocaleString()}<Text style={styles.listCardPriceSuffix}>/mo</Text></Text>
         <View style={styles.listCardBadgeRow}>
-          <View style={styles.typeBadge}><Text style={styles.typeBadgeText}>{typeLabel[item.type]}</Text></View>
-          <View style={styles.genderBadge}><Text style={styles.genderBadgeText}>{genderLabel[item.genderPreference]}</Text></View>
+          <View style={styles.typeBadge}><Text style={styles.typeBadgeText}>{typeLabel[item.boardingType]}</Text></View>
+          <View style={styles.genderBadge}><Text style={styles.genderBadgeText}>{genderLabel[item.genderPref]}</Text></View>
         </View>
         <View style={styles.listCardFooter}>
           <View style={styles.amenityIcons}>
-            <AmenityIcon name="wifi" active={item.amenities.wifi} />
-            <AmenityIcon name="parking" active={item.amenities.parking} />
-            <AmenityIcon name="furnished" active={item.amenities.furnished} />
-            <AmenityIcon name="ac" active={item.amenities.ac} />
-            <AmenityIcon name="hotWater" active={item.amenities.hotWater} />
+            {topAmenityNames.map((name) => (
+              <AmenityIcon
+                key={name}
+                name={name}
+                active={item.amenities.some((a) => a.name === name)}
+              />
+            ))}
           </View>
-          {item.nearestUniversity && (
-            <Text style={styles.distanceText}>{item.distanceToUniversity}km away</Text>
+          {item.nearUniversity && (
+            <Text style={styles.distanceText} numberOfLines={1}>{item.nearUniversity}</Text>
           )}
-          <View style={styles.ratingPill}>
-            <Ionicons name="star" size={11} color="#F59E0B" />
-            <Text style={styles.ratingText}>{item.averageRating.toFixed(1)} ({item.reviewCount})</Text>
-          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -122,8 +122,8 @@ export default function ExploreScreen() {
     const chips: { key: string; label: string }[] = [];
     if (filters.district) chips.push({ key: 'district', label: filters.district });
     if (filters.city) chips.push({ key: 'city', label: filters.city });
-    if (filters.maxPrice) chips.push({ key: 'maxPrice', label: `< LKR ${filters.maxPrice.toLocaleString()}` });
-    if (filters.genderPreference) chips.push({ key: 'genderPreference', label: filters.genderPreference });
+    if (filters.maxRent) chips.push({ key: 'maxRent', label: `< LKR ${filters.maxRent.toLocaleString()}` });
+    if (filters.genderPref) chips.push({ key: 'genderPref', label: filters.genderPref });
     return chips;
   }, [filters]);
 
@@ -139,9 +139,9 @@ export default function ExploreScreen() {
     }
     if (filters.district) data = data.filter((b) => b.district === filters.district);
     if (filters.city) data = data.filter((b) => b.city === filters.city);
-    if (filters.minPrice) data = data.filter((b) => b.monthlyRent >= (filters.minPrice ?? 0));
-    if (filters.maxPrice) data = data.filter((b) => b.monthlyRent <= (filters.maxPrice ?? Infinity));
-    if (filters.genderPreference) data = data.filter((b) => b.genderPreference === filters.genderPreference);
+    if (filters.minRent) data = data.filter((b) => b.monthlyRent >= (filters.minRent ?? 0));
+    if (filters.maxRent) data = data.filter((b) => b.monthlyRent <= (filters.maxRent ?? Infinity));
+    if (filters.genderPref) data = data.filter((b) => b.genderPref === filters.genderPref);
 
     if (sortOption === 'PRICE_ASC') data = [...data].sort((a, b) => a.monthlyRent - b.monthlyRent);
     else if (sortOption === 'PRICE_DESC') data = [...data].sort((a, b) => b.monthlyRent - a.monthlyRent);
@@ -372,9 +372,7 @@ const styles = StyleSheet.create({
   genderBadgeText: { fontSize: 11, fontWeight: '600', color: COLORS.textSecondary },
   listCardFooter: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   amenityIcons: { flexDirection: 'row', gap: 6 },
-  distanceText: { fontSize: 11, color: COLORS.textSecondary },
-  ratingPill: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  ratingText: { fontSize: 11, color: COLORS.text, fontWeight: '600' },
+  distanceText: { fontSize: 11, color: COLORS.textSecondary, flex: 1 },
 
   // Empty
   emptyState: { alignItems: 'center', paddingTop: 80, gap: 10 },

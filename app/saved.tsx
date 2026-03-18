@@ -46,7 +46,7 @@ export default function SavedBoardingsScreen() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
-          const primaryImage = item.images.find((img) => img.isPrimary) ?? item.images[0];
+          const primaryImage = item.images[0];
           return (
             <TouchableOpacity
               style={styles.card}

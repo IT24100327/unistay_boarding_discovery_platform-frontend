@@ -44,6 +44,11 @@ export default function BoardingReviewsScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const boarding = SAMPLE_BOARDINGS.find((b) => b.slug === slug || b.id === slug) ?? SAMPLE_BOARDINGS[0];
 
+  const totalReviews = SAMPLE_REVIEWS.length;
+  const averageRating =
+    totalReviews > 0
+      ? SAMPLE_REVIEWS.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+      : 0;
   const ratingBreakdown = [5, 4, 3, 2, 1].map((s) => ({
     stars: s,
     count: SAMPLE_REVIEWS.filter((r) => Math.round(r.rating) === s).length,
@@ -63,13 +68,13 @@ export default function BoardingReviewsScreen() {
         {/* Overall rating */}
         <View style={styles.overallCard}>
           <View style={styles.overallLeft}>
-            <Text style={styles.overallScore}>{boarding.averageRating.toFixed(1)}</Text>
-            <StarRow rating={boarding.averageRating} />
-            <Text style={styles.overallCount}>{boarding.reviewCount} reviews</Text>
+            <Text style={styles.overallScore}>{averageRating.toFixed(1)}</Text>
+            <StarRow rating={averageRating} />
+            <Text style={styles.overallCount}>{totalReviews} reviews</Text>
           </View>
           <View style={styles.overallRight}>
             {ratingBreakdown.map(({ stars, count }) => (
-              <RatingBar key={stars} stars={stars} count={count} total={boarding.reviewCount} />
+              <RatingBar key={stars} stars={stars} count={count} total={totalReviews} />
             ))}
           </View>
         </View>

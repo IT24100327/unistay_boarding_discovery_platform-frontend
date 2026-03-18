@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBoardingStore } from '@/store/boarding.store';
 import { COLORS } from '@/lib/constants';
-import type { BoardingType, GenderPreference, BoardingFilters } from '@/types/boarding.types';
+import type { BoardingType, GenderPreference, BoardingFilters, AmenityName } from '@/types/boarding.types';
 
 const DISTRICTS = [
   'Colombo', 'Gampaha', 'Kalutara', 'Kandy', 'Matale', 'Nuwara Eliya',
@@ -25,7 +25,7 @@ const BOARDING_TYPES: { label: string; value: BoardingType }[] = [
   { label: 'Single Room', value: 'SINGLE_ROOM' },
   { label: 'Shared Room', value: 'SHARED_ROOM' },
   { label: 'Annex', value: 'ANNEX' },
-  { label: 'Full House', value: 'FULL_HOUSE' },
+  { label: 'House', value: 'HOUSE' },
 ];
 
 const GENDER_OPTIONS: { label: string; value: GenderPreference }[] = [
@@ -34,62 +34,51 @@ const GENDER_OPTIONS: { label: string; value: GenderPreference }[] = [
   { label: 'Any', value: 'ANY' },
 ];
 
-const DISTANCE_OPTIONS = [
-  { label: 'Any', value: undefined },
-  { label: '< 1 km', value: 1 },
-  { label: '< 2 km', value: 2 },
-  { label: '< 5 km', value: 5 },
-  { label: '< 10 km', value: 10 },
+const AMENITY_OPTIONS: { key: AmenityName; label: string }[] = [
+  { key: 'WIFI', label: 'WiFi' },
+  { key: 'PARKING', label: 'Parking' },
+  { key: 'AIR_CONDITIONING', label: 'Air Conditioning' },
+  { key: 'HOT_WATER', label: 'Hot Water' },
+  { key: 'SECURITY', label: 'Security' },
+  { key: 'KITCHEN', label: 'Kitchen' },
+  { key: 'LAUNDRY', label: 'Laundry' },
+  { key: 'GENERATOR', label: 'Generator' },
+  { key: 'WATER_TANK', label: 'Water Tank' },
+  { key: 'GYM', label: 'Gym' },
+  { key: 'SWIMMING_POOL', label: 'Swimming Pool' },
+  { key: 'STUDY_ROOM', label: 'Study Room' },
+  { key: 'COMMON_AREA', label: 'Common Area' },
+  { key: 'BALCONY', label: 'Balcony' },
 ];
-
-const AMENITY_LABELS: Record<string, string> = {
-  wifi: 'WiFi',
-  parking: 'Parking',
-  furnished: 'Furnished',
-  ac: 'Air Conditioning',
-  hotWater: 'Hot Water',
-};
 
 export default function FilterScreen() {
   const { filters, setFilters, clearFilters } = useBoardingStore();
 
   const [district, setDistrict] = useState(filters.district ?? '');
   const [city, setCity] = useState(filters.city ?? '');
-  const [minPrice, setMinPrice] = useState(filters.minPrice?.toString() ?? '');
-  const [maxPrice, setMaxPrice] = useState(filters.maxPrice?.toString() ?? '');
-  const [selectedTypes, setSelectedTypes] = useState<BoardingType[]>(filters.types ?? []);
-  const [genderPref, setGenderPref] = useState<GenderPreference | undefined>(filters.genderPreference);
-  const [amenities, setAmenities] = useState<Record<string, boolean>>({
-    wifi: filters.amenities?.wifi ?? false,
-    parking: filters.amenities?.parking ?? false,
-    furnished: filters.amenities?.furnished ?? false,
-    ac: filters.amenities?.ac ?? false,
-    hotWater: filters.amenities?.hotWater ?? false,
-  });
-  const [maxDistance, setMaxDistance] = useState<number | undefined>(filters.maxDistance);
-  const [university, setUniversity] = useState(filters.university ?? '');
+  const [minRent, setMinRent] = useState(filters.minRent?.toString() ?? '');
+  const [maxRent, setMaxRent] = useState(filters.maxRent?.toString() ?? '');
+  const [boardingType, setBoardingType] = useState<BoardingType | undefined>(filters.boardingType);
+  const [genderPref, setGenderPref] = useState<GenderPreference | undefined>(filters.genderPref);
+  const [selectedAmenities, setSelectedAmenities] = useState<AmenityName[]>(filters.amenities ?? []);
+  const [nearUniversity, setNearUniversity] = useState(filters.nearUniversity ?? '');
   const [showDistricts, setShowDistricts] = useState(false);
 
-  const toggleType = (t: BoardingType) => {
-    setSelectedTypes((prev) =>
-      prev.includes(t) ? prev.filter((v) => v !== t) : [...prev, t],
+  const toggleAmenity = (key: AmenityName) => {
+    setSelectedAmenities((prev) =>
+      prev.includes(key) ? prev.filter((a) => a !== key) : [...prev, key],
     );
-  };
-
-  const toggleAmenity = (key: string) => {
-    setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleClearAll = () => {
     setDistrict('');
     setCity('');
-    setMinPrice('');
-    setMaxPrice('');
-    setSelectedTypes([]);
+    setMinRent('');
+    setMaxRent('');
+    setBoardingType(undefined);
     setGenderPref(undefined);
-    setAmenities({ wifi: false, parking: false, furnished: false, ac: false, hotWater: false });
-    setMaxDistance(undefined);
-    setUniversity('');
+    setSelectedAmenities([]);
+    setNearUniversity('');
     clearFilters();
   };
 
@@ -97,18 +86,12 @@ export default function FilterScreen() {
     const newFilters: BoardingFilters = {};
     if (district) newFilters.district = district;
     if (city) newFilters.city = city;
-    if (minPrice) newFilters.minPrice = parseInt(minPrice, 10);
-    if (maxPrice) newFilters.maxPrice = parseInt(maxPrice, 10);
-    if (selectedTypes.length) newFilters.types = selectedTypes;
-    if (genderPref) newFilters.genderPreference = genderPref;
-    if (maxDistance) newFilters.maxDistance = maxDistance;
-    if (university) newFilters.university = university;
-    const activeAmenities = Object.fromEntries(
-      Object.entries(amenities).filter(([, v]) => v),
-    );
-    if (Object.keys(activeAmenities).length) {
-      newFilters.amenities = activeAmenities as BoardingFilters['amenities'];
-    }
+    if (minRent) newFilters.minRent = parseInt(minRent, 10);
+    if (maxRent) newFilters.maxRent = parseInt(maxRent, 10);
+    if (boardingType) newFilters.boardingType = boardingType;
+    if (genderPref) newFilters.genderPref = genderPref;
+    if (selectedAmenities.length) newFilters.amenities = selectedAmenities;
+    if (nearUniversity) newFilters.nearUniversity = nearUniversity;
     setFilters(newFilters);
     router.back();
   };
@@ -160,14 +143,14 @@ export default function FilterScreen() {
           onChangeText={setCity}
         />
 
-        <Text style={styles.sectionTitle}>Price Range (LKR)</Text>
+        <Text style={styles.sectionTitle}>Price Range (LKR/month)</Text>
         <View style={styles.priceRow}>
           <TextInput
             style={[styles.input, styles.priceInput]}
             placeholder="Min"
             placeholderTextColor={COLORS.grayBorder}
-            value={minPrice}
-            onChangeText={setMinPrice}
+            value={minRent}
+            onChangeText={setMinRent}
             keyboardType="number-pad"
           />
           <Text style={styles.priceSep}>–</Text>
@@ -175,8 +158,8 @@ export default function FilterScreen() {
             style={[styles.input, styles.priceInput]}
             placeholder="Max"
             placeholderTextColor={COLORS.grayBorder}
-            value={maxPrice}
-            onChangeText={setMaxPrice}
+            value={maxRent}
+            onChangeText={setMaxRent}
             keyboardType="number-pad"
           />
         </View>
@@ -186,10 +169,10 @@ export default function FilterScreen() {
           {BOARDING_TYPES.map((t) => (
             <TouchableOpacity
               key={t.value}
-              style={[styles.multiChip, selectedTypes.includes(t.value) && styles.multiChipActive]}
-              onPress={() => toggleType(t.value)}
+              style={[styles.multiChip, boardingType === t.value && styles.multiChipActive]}
+              onPress={() => setBoardingType(boardingType === t.value ? undefined : t.value)}
             >
-              <Text style={[styles.multiChipText, selectedTypes.includes(t.value) && styles.multiChipTextActive]}>
+              <Text style={[styles.multiChipText, boardingType === t.value && styles.multiChipTextActive]}>
                 {t.label}
               </Text>
             </TouchableOpacity>
@@ -212,40 +195,26 @@ export default function FilterScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>Amenities</Text>
-        {Object.keys(AMENITY_LABELS).map((key) => (
+        {AMENITY_OPTIONS.map(({ key, label }) => (
           <TouchableOpacity
             key={key}
             style={styles.checkboxRow}
             onPress={() => toggleAmenity(key)}
           >
-            <View style={[styles.checkbox, amenities[key] && styles.checkboxChecked]}>
-              {amenities[key] && <Ionicons name="checkmark" size={14} color={COLORS.white} />}
+            <View style={[styles.checkbox, selectedAmenities.includes(key) && styles.checkboxChecked]}>
+              {selectedAmenities.includes(key) && <Ionicons name="checkmark" size={14} color={COLORS.white} />}
             </View>
-            <Text style={styles.checkboxLabel}>{AMENITY_LABELS[key]}</Text>
+            <Text style={styles.checkboxLabel}>{label}</Text>
           </TouchableOpacity>
         ))}
 
-        <Text style={styles.sectionTitle}>Distance to University</Text>
-        <View style={styles.chipRow}>
-          {DISTANCE_OPTIONS.map((d) => (
-            <TouchableOpacity
-              key={String(d.value)}
-              style={[styles.multiChip, maxDistance === d.value && styles.multiChipActive]}
-              onPress={() => setMaxDistance(d.value)}
-            >
-              <Text style={[styles.multiChipText, maxDistance === d.value && styles.multiChipTextActive]}>
-                {d.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
+        <Text style={styles.sectionTitle}>Near University</Text>
         <TextInput
           style={styles.input}
-          placeholder="Nearest University"
+          placeholder="e.g. University of Colombo"
           placeholderTextColor={COLORS.grayBorder}
-          value={university}
-          onChangeText={setUniversity}
+          value={nearUniversity}
+          onChangeText={setNearUniversity}
         />
 
         <View style={{ height: 120 }} />
