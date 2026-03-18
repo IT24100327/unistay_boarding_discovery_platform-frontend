@@ -1,0 +1,151 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBoardingStore, SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { COLORS } from '@/lib/constants';
+import type { Boarding } from '@/types/boarding.types';
+
+export default function SavedBoardingsScreen() {
+  const { savedIds, toggleSaved } = useBoardingStore();
+  const savedBoardings = SAMPLE_BOARDINGS.filter((b) => savedIds.includes(b.id));
+
+  const handleUnsave = (boarding: Boarding) => {
+    Alert.alert(
+      'Remove from Saved',
+      `Remove "${boarding.title}" from your saved list?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => toggleSaved(boarding.id) },
+      ],
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Saved Boardings</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <FlatList
+        data={savedBoardings}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => {
+          const primaryImage = item.images.find((img) => img.isPrimary) ?? item.images[0];
+          return (
+            <TouchableOpacity
+              style={styles.card}
+              activeOpacity={0.85}
+              onPress={() => router.push(`/boardings/${item.slug}` as never)}
+            >
+              <View style={styles.cardImageContainer}>
+                {primaryImage ? (
+                  <Image source={{ uri: primaryImage.url }} style={styles.cardImage} />
+                ) : (
+                  <View style={[styles.cardImage, styles.imagePlaceholder]}>
+                    <Ionicons name="home-outline" size={28} color={COLORS.gray} />
+                  </View>
+                )}
+              </View>
+              <View style={styles.cardBody}>
+                <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.cardAddress} numberOfLines={1}>
+                  <Ionicons name="location-outline" size={11} color={COLORS.gray} /> {item.city}, {item.district}
+                </Text>
+                <Text style={styles.cardPrice}>LKR {item.monthlyRent.toLocaleString()}<Text style={styles.perMonth}>/mo</Text></Text>
+                <View style={styles.ratingRow}>
+                  <Ionicons name="star" size={12} color="#F59E0B" />
+                  <Text style={styles.ratingText}>{item.averageRating.toFixed(1)} ({item.reviewCount})</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.unsaveBtn}
+                onPress={() => handleUnsave(item)}
+                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+              >
+                <Ionicons name="heart" size={22} color={COLORS.red} />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          );
+        }}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="heart-outline" size={64} color={COLORS.grayBorder} />
+            <Text style={styles.emptyTitle}>No saved boardings yet</Text>
+            <Text style={styles.emptySub}>Tap the heart icon on any listing to save it here</Text>
+            <TouchableOpacity
+              style={styles.exploreBtn}
+              onPress={() => router.push('/(tabs)/search' as never)}
+            >
+              <Text style={styles.exploreBtnText}>Explore Boardings</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.grayBorder,
+  },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: COLORS.text },
+  list: { padding: 16, gap: 12 },
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardImageContainer: {},
+  cardImage: { width: 100, height: 120 },
+  imagePlaceholder: { backgroundColor: COLORS.grayLight, alignItems: 'center', justifyContent: 'center' },
+  cardBody: { flex: 1, padding: 12, gap: 4 },
+  cardTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  cardAddress: { fontSize: 12, color: COLORS.textSecondary },
+  cardPrice: { fontSize: 15, fontWeight: '800', color: COLORS.primary },
+  perMonth: { fontSize: 11, fontWeight: '400', color: COLORS.textSecondary },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ratingText: { fontSize: 12, color: COLORS.text },
+  unsaveBtn: { padding: 12, alignSelf: 'center' },
+  emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40, gap: 12 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text },
+  emptySub: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
+  exploreBtn: {
+    marginTop: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  exploreBtnText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
+});

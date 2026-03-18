@@ -1,0 +1,313 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  Image,
+  Modal,
+} from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBoardingStore } from '@/store/boarding.store';
+import { COLORS } from '@/lib/constants';
+
+function ProgressBar({ step, total }: { step: number; total: number }) {
+  return (
+    <View style={styles.progressContainer}>
+      <Text style={styles.progressLabel}>Step {step} of {total}</Text>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${(step / total) * 100}%` }]} />
+      </View>
+    </View>
+  );
+}
+
+export default function CreateStep5Screen() {
+  const { createDraft, setCreateDraft, clearCreateDraft } = useBoardingStore();
+  const [rules, setRules] = useState<string[]>(createDraft.houseRules ?? []);
+  const [showRuleInput, setShowRuleInput] = useState(false);
+  const [newRule, setNewRule] = useState('');
+  const [successVisible, setSuccessVisible] = useState(false);
+
+  const handleAddRule = () => {
+    if (!newRule.trim()) return;
+    setRules((prev) => [...prev, newRule.trim()]);
+    setNewRule('');
+    setShowRuleInput(false);
+  };
+
+  const handleDeleteRule = (index: number) => {
+    setRules((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveDraft = () => {
+    setCreateDraft({ houseRules: rules });
+    Alert.alert('Draft Saved', 'Your listing has been saved as a draft.', [
+      { text: 'OK', onPress: () => { clearCreateDraft(); router.push('/my-listings' as never); } },
+    ]);
+  };
+
+  const handleSubmit = () => {
+    setCreateDraft({ houseRules: rules });
+    setSuccessVisible(true);
+  };
+
+  const TYPE_LABELS: Record<string, string> = {
+    SINGLE_ROOM: 'Single Room', SHARED_ROOM: 'Shared Room',
+    ANNEX: 'Annex', FULL_HOUSE: 'Full House',
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Create Listing</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ProgressBar step={5} total={5} />
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* House Rules */}
+        <Text style={styles.sectionTitle}>House Rules</Text>
+        {rules.map((rule, i) => (
+          <View key={i} style={styles.ruleItem}>
+            <Ionicons name="ellipse" size={6} color={COLORS.primary} />
+            <Text style={styles.ruleText}>{rule}</Text>
+            <TouchableOpacity onPress={() => handleDeleteRule(i)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+              <Ionicons name="trash-outline" size={16} color={COLORS.red} />
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        {showRuleInput ? (
+          <View style={styles.ruleInputRow}>
+            <TextInput
+              style={styles.ruleInput}
+              placeholder="e.g. No smoking on premises"
+              placeholderTextColor={COLORS.grayBorder}
+              value={newRule}
+              onChangeText={setNewRule}
+              autoFocus
+            />
+            <TouchableOpacity style={styles.ruleAddBtn} onPress={handleAddRule}>
+              <Ionicons name="checkmark" size={20} color={COLORS.white} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setShowRuleInput(false); setNewRule(''); }}>
+              <Ionicons name="close" size={20} color={COLORS.gray} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.addRuleBtn} onPress={() => setShowRuleInput(true)}>
+            <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.addRuleBtnText}>+ Add Rule</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Review Summary */}
+        <View style={styles.divider} />
+        <Text style={styles.sectionTitle}>Review Summary</Text>
+
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>Title</Text>
+          <Text style={styles.summaryValue}>{createDraft.title || '—'}</Text>
+
+          <Text style={styles.summaryLabel}>Type</Text>
+          <Text style={styles.summaryValue}>{createDraft.type ? TYPE_LABELS[createDraft.type] : '—'}</Text>
+
+          <Text style={styles.summaryLabel}>Monthly Rent</Text>
+          <Text style={styles.summaryValue}>
+            {createDraft.monthlyRent ? `LKR ${createDraft.monthlyRent.toLocaleString()}` : '—'}
+          </Text>
+
+          <Text style={styles.summaryLabel}>Address</Text>
+          <Text style={styles.summaryValue}>
+            {[createDraft.addressLine, createDraft.city, createDraft.district].filter(Boolean).join(', ') || '—'}
+          </Text>
+
+          <Text style={styles.summaryLabel}>Amenities</Text>
+          <View style={styles.amenitySummaryRow}>
+            {createDraft.amenities ? (
+              Object.entries(createDraft.amenities)
+                .filter(([, v]) => v)
+                .map(([k]) => (
+                  <View key={k} style={styles.amenityChip}>
+                    <Text style={styles.amenityChipText}>{k.toUpperCase()}</Text>
+                  </View>
+                ))
+            ) : (
+              <Text style={styles.summaryValue}>None selected</Text>
+            )}
+          </View>
+
+          {/* Image thumbnails */}
+          {(createDraft.images ?? []).length > 0 && (
+            <>
+              <Text style={styles.summaryLabel}>Photos</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.thumbRow}>
+                  {(createDraft.images ?? []).map((img) => (
+                    <Image key={img.id} source={{ uri: img.url }} style={styles.thumb} />
+                  ))}
+                </View>
+              </ScrollView>
+            </>
+          )}
+        </View>
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.draftBtn} onPress={handleSaveDraft}>
+          <Text style={styles.draftBtnText}>Save Draft</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
+          <Text style={styles.submitBtnText}>Submit for Approval</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Success Modal */}
+      <Modal visible={successVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.successIcon}>
+              <Ionicons name="checkmark-circle" size={56} color={COLORS.green} />
+            </View>
+            <Text style={styles.modalTitle}>Submitted!</Text>
+            <Text style={styles.modalSubtitle}>
+              Your listing has been submitted for approval. You will be notified once it goes live.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => {
+                setSuccessVisible(false);
+                clearCreateDraft();
+                router.push('/my-listings' as never);
+              }}
+            >
+              <Text style={styles.modalBtnText}>Go to My Listings</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.grayBorder,
+  },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: COLORS.text },
+  progressContainer: { padding: 16, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.grayBorder },
+  progressLabel: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 6 },
+  progressTrack: { height: 4, backgroundColor: COLORS.grayLight, borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: COLORS.primary, borderRadius: 2 },
+  content: { padding: 20 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text, marginBottom: 14 },
+  ruleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.grayLight,
+  },
+  ruleText: { flex: 1, fontSize: 14, color: COLORS.text },
+  ruleInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  ruleInput: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: COLORS.text,
+    borderWidth: 1,
+    borderColor: COLORS.grayBorder,
+  },
+  ruleAddBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addRuleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 12,
+  },
+  addRuleBtnText: { fontSize: 14, color: COLORS.primary, fontWeight: '600' },
+  divider: { height: 1, backgroundColor: COLORS.grayLight, marginVertical: 20 },
+  summaryCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 16,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  summaryLabel: { fontSize: 12, color: COLORS.textSecondary, marginTop: 10 },
+  summaryValue: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  amenitySummaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  amenityChip: { backgroundColor: '#EBF0FF', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  amenityChipText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
+  thumbRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
+  thumb: { width: 64, height: 64, borderRadius: 8 },
+  footer: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.grayBorder,
+  },
+  draftBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.grayBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  draftBtnText: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+  submitBtn: {
+    flex: 2,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitBtnText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 30 },
+  modalCard: { backgroundColor: COLORS.white, borderRadius: 20, padding: 30, alignItems: 'center', gap: 12, width: '100%' },
+  successIcon: { marginBottom: 4 },
+  modalTitle: { fontSize: 22, fontWeight: '800', color: COLORS.text },
+  modalSubtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22 },
+  modalBtn: { marginTop: 8, backgroundColor: COLORS.primary, borderRadius: 12, paddingHorizontal: 28, paddingVertical: 12 },
+  modalBtnText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
+});
