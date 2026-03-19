@@ -2,24 +2,16 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// react-native-maps (and some other packages) reference their TypeScript/JSX
-// source files via the "react-native" field in package.json.  Metro resolves
-// those source files but, by default, skips Babel for *all* node_modules
-// whose path matches the built-in blockList.  Explicitly extending the list of
-// source extensions and pointing the Babel transformer at the project's own
-// babel.config.js guarantees that every .ts/.tsx/.jsx file inside node_modules
-// is transpiled through babel-preset-expo — eliminating the
-// "Unexpected token '<'" parse error.
-const { transformer, resolver } = config;
-
-config.transformer = {
-  ...transformer,
-  babelTransformerPath: require.resolve('metro-react-native-babel-transformer'),
-};
-
-config.resolver = {
-  ...resolver,
-  sourceExts: [...(resolver.sourceExts ?? []), 'cjs', 'mjs'],
-};
+// react-native-maps ships .js files that contain JSX
+// (e.g. node_modules/react-native-maps/lib/MapView.js line 347).
+// Metro's default transformIgnorePatterns excludes all of node_modules, so
+// those files never pass through Babel and the bundler throws
+// "Unexpected token '<'".
+// The regex below tells Metro to transform every node_modules package
+// EXCEPT the ones in the non-capturing group — react-native-maps is added
+// to that group so its JSX source gets compiled by babel-preset-expo.
+config.transformer.transformIgnorePatterns = [
+  /node_modules[/\\](?!(react-native|@react-native(-community)?|react-native-maps|expo(nent)?|@expo(nent)?\/.*|@unimodules\/.*|unimodules-|native-base|react-native-svg)\/).*/,
+];
 
 module.exports = config;
