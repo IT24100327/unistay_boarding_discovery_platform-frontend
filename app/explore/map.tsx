@@ -10,7 +10,7 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Callout, UrlTile } from 'react-native-maps';
 import { SAMPLE_BOARDINGS } from '@/store/boarding.store';
 import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
@@ -39,11 +39,16 @@ export default function MapViewScreen() {
     <SafeAreaView style={styles.container}>
       <MapView
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        mapType="none"
         initialRegion={INITIAL_REGION}
         showsUserLocation
         showsMyLocationButton
       >
+        <UrlTile
+          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maximumZ={19}
+          flipY={false}
+        />
         {filtered.map((boarding) => (
           <Marker
             key={boarding.id}
