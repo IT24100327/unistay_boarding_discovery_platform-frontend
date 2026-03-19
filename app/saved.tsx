@@ -68,10 +68,6 @@ export default function SavedBoardingsScreen() {
                   <Ionicons name="location-outline" size={11} color={COLORS.gray} /> {item.city}, {item.district}
                 </Text>
                 <Text style={styles.cardPrice}>LKR {item.monthlyRent.toLocaleString()}<Text style={styles.perMonth}>/mo</Text></Text>
-                <View style={styles.ratingRow}>
-                  <Ionicons name="star" size={12} color="#F59E0B" />
-                  <Text style={styles.ratingText}>{item.averageRating.toFixed(1)} ({item.reviewCount})</Text>
-                </View>
               </View>
               <TouchableOpacity
                 style={styles.unsaveBtn}
@@ -134,8 +130,6 @@ const styles = StyleSheet.create({
   cardAddress: { fontSize: 12, color: COLORS.textSecondary },
   cardPrice: { fontSize: 15, fontWeight: '800', color: COLORS.primary },
   perMonth: { fontSize: 11, fontWeight: '400', color: COLORS.textSecondary },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingText: { fontSize: 12, color: COLORS.text },
   unsaveBtn: { padding: 12, alignSelf: 'center' },
   emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40, gap: 12 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text },

@@ -127,7 +127,7 @@ export default function ListingAnalyticsScreen() {
           <StatCard icon="heart-outline" label="Saves" value={32} color={COLORS.red} bg="#FEE2E2" />
           <StatCard icon="calendar-outline" label="Requests" value={32} color={COLORS.orange} bg="#FEF3C7" />
           <StatCard icon="checkmark-circle-outline" label="Approved" value={18} color={COLORS.green} bg="#D1FAE5" />
-          <StatCard icon="star-outline" label="Avg Rating" value={boarding.averageRating.toFixed(1)} color="#F59E0B" bg="#FFFBEB" />
+          <StatCard icon="star-outline" label="Avg Rating" value="4.5" color="#F59E0B" bg="#FFFBEB" />
           <StatCard icon="trending-up-outline" label="Conversion" value="56%" color="#8B5CF6" bg="#EDE9FE" />
         </View>
 
