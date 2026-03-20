@@ -36,7 +36,7 @@ export interface SearchBoardingsResponse {
 
 export interface CreateBoardingPayload {
   title: string;
-  description: string;
+  description?: string;
   city: string;
   district: string;
   address?: string;
@@ -46,7 +46,6 @@ export interface CreateBoardingPayload {
   latitude?: number;
   longitude?: number;
   maxOccupants: number;
-  currentOccupants?: number;
   amenities?: AmenityName[];
   nearUniversity?: string;
   rules?: string[];

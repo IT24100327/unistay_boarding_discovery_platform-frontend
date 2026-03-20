@@ -20,6 +20,7 @@ import {
   uploadBoardingImages,
   submitBoardingForApproval,
 } from '@/lib/boarding';
+import type { CreateBoardingPayload } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
 import type { BoardingType, GenderPreference } from '@/types/boarding.types';
 
@@ -49,6 +50,16 @@ async function buildAndUploadImages(boardingId: string, imageUris: string[]) {
   await uploadBoardingImages(boardingId, formData);
 }
 
+type ApiError = { response?: { data?: { message?: string | string[] } } };
+
+function extractErrorMessage(err: unknown): string {
+  const data = (err as ApiError)?.response?.data;
+  if (!data) return 'Something went wrong. Please try again.';
+  const { message } = data;
+  if (Array.isArray(message)) return message.join('\n');
+  return message ?? 'Something went wrong. Please try again.';
+}
+
 export default function CreateStep5Screen() {
   const { createDraft, setCreateDraft, clearCreateDraft } = useBoardingStore();
   const [rules, setRules] = useState<string[]>(createDraft.rules ?? []);
@@ -68,23 +79,32 @@ export default function CreateStep5Screen() {
     setRules((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const buildPayload = () => ({
-    title: createDraft.title ?? '',
-    description: createDraft.description ?? '',
-    city: createDraft.city ?? '',
-    district: createDraft.district ?? '',
-    address: createDraft.address,
-    monthlyRent: createDraft.monthlyRent ?? 0,
-    boardingType: createDraft.boardingType as BoardingType,
-    genderPref: createDraft.genderPref as GenderPreference,
-    latitude: createDraft.latitude,
-    longitude: createDraft.longitude,
-    maxOccupants: createDraft.maxOccupants ?? 1,
-    currentOccupants: createDraft.currentOccupants ?? 0,
-    amenities: createDraft.amenities ?? [],
-    nearUniversity: createDraft.nearUniversity,
-    rules,
-  });
+  const buildPayload = (): CreateBoardingPayload => {
+    const payload: CreateBoardingPayload = {
+      title: createDraft.title ?? '',
+      city: createDraft.city ?? '',
+      district: createDraft.district ?? '',
+      monthlyRent: createDraft.monthlyRent ?? 0,
+      boardingType: createDraft.boardingType as BoardingType,
+      genderPref: createDraft.genderPref as GenderPreference,
+      maxOccupants: createDraft.maxOccupants ?? 1,
+      amenities: createDraft.amenities ?? [],
+      rules,
+    };
+    const desc = createDraft.description?.trim();
+    if (desc) payload.description = desc;
+    const addr = createDraft.address?.trim();
+    if (addr) payload.address = addr;
+    const uni = createDraft.nearUniversity?.trim();
+    if (uni) payload.nearUniversity = uni;
+    if (createDraft.latitude !== null && createDraft.latitude !== undefined && !isNaN(createDraft.latitude)) {
+      payload.latitude = createDraft.latitude;
+    }
+    if (createDraft.longitude !== null && createDraft.longitude !== undefined && !isNaN(createDraft.longitude)) {
+      payload.longitude = createDraft.longitude;
+    }
+    return payload;
+  };
 
   const validateDraft = () => {
     if (!createDraft.title?.trim()) {
@@ -127,10 +147,7 @@ export default function CreateStep5Screen() {
         { text: 'OK', onPress: () => { clearCreateDraft(); router.push('/my-listings' as never); } },
       ]);
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Something went wrong. Please try again.';
-      Alert.alert('Error', message);
+      Alert.alert('Error', extractErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -153,10 +170,7 @@ export default function CreateStep5Screen() {
       await submitBoardingForApproval(boardingId);
       setSuccessVisible(true);
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Something went wrong. Please try again.';
-      Alert.alert('Error', message);
+      Alert.alert('Error', extractErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
