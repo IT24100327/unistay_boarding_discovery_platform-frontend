@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,12 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { getMyListings, deactivateBoarding, activateBoarding } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
 import type { Boarding, BoardingStatus } from '@/types/boarding.types';
 
@@ -42,20 +43,61 @@ const STATUS_TEXT_COLORS: Record<BoardingStatus, string> = {
 
 export default function MyListingsScreen() {
   const [activeTab, setActiveTab] = useState<BoardingStatus | 'ALL'>('ALL');
-  const ownerListings = SAMPLE_BOARDINGS.filter((b) => b.owner.id === 'o1');
-  const filtered = activeTab === 'ALL' ? ownerListings : ownerListings.filter((b) => b.status === activeTab);
+  const [listings, setListings] = useState<Boarding[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadListings = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await getMyListings();
+      setListings(result.data.boardings);
+    } catch {
+      Alert.alert('Error', 'Failed to load your listings. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { loadListings(); }, [loadListings]));
+
+  const filtered = activeTab === 'ALL' ? listings : listings.filter((b) => b.status === activeTab);
 
   const handleDeactivate = (boarding: Boarding) => {
     Alert.alert('Deactivate Listing', `Deactivate "${boarding.title}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Deactivate', style: 'destructive', onPress: () => {} },
+      {
+        text: 'Deactivate',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deactivateBoarding(boarding.id);
+            setListings((prev) =>
+              prev.map((b) => (b.id === boarding.id ? { ...b, status: 'INACTIVE' } : b)),
+            );
+          } catch {
+            Alert.alert('Error', 'Failed to deactivate the listing. Please try again.');
+          }
+        },
+      },
     ]);
   };
 
-  const handleDelete = (boarding: Boarding) => {
-    Alert.alert('Delete Listing', `Permanently delete "${boarding.title}"?`, [
+  const handleActivate = (boarding: Boarding) => {
+    Alert.alert('Activate Listing', `Activate "${boarding.title}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => {} },
+      {
+        text: 'Activate',
+        onPress: async () => {
+          try {
+            await activateBoarding(boarding.id);
+            setListings((prev) =>
+              prev.map((b) => (b.id === boarding.id ? { ...b, status: 'ACTIVE' } : b)),
+            );
+          } catch {
+            Alert.alert('Error', 'Failed to activate the listing. Please try again.');
+          }
+        },
+      },
     ]);
   };
 
@@ -84,9 +126,13 @@ export default function MyListingsScreen() {
               style={styles.menuBtn}
               onPress={() =>
                 Alert.alert(item.title, 'Choose an action', [
-                  { text: 'Deactivate', onPress: () => handleDeactivate(item) },
-                  { text: 'Delete', style: 'destructive', onPress: () => handleDelete(item) },
-                  { text: 'Cancel', style: 'cancel' },
+                  ...(item.status === 'ACTIVE'
+                    ? [{ text: 'Deactivate', onPress: () => handleDeactivate(item) }]
+                    : []),
+                  ...(item.status === 'INACTIVE'
+                    ? [{ text: 'Activate', onPress: () => handleActivate(item) }]
+                    : []),
+                  { text: 'Cancel', style: 'cancel' as const },
                 ])
               }
             >
@@ -149,20 +195,26 @@ export default function MyListingsScreen() {
         />
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="home-outline" size={64} color={COLORS.grayBorder} />
-            <Text style={styles.emptyTitle}>No listings yet</Text>
-            <Text style={styles.emptySub}>Create your first listing to get started</Text>
-          </View>
-        }
-      />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="home-outline" size={64} color={COLORS.grayBorder} />
+              <Text style={styles.emptyTitle}>No listings yet</Text>
+              <Text style={styles.emptySub}>Create your first listing to get started</Text>
+            </View>
+          }
+        />
+      )}
 
       {/* FAB */}
       <TouchableOpacity
@@ -259,6 +311,7 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingTop: 80, gap: 12 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text },
   emptySub: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   fab: {
     position: 'absolute',
     bottom: 24,

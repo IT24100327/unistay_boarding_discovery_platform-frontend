@@ -9,12 +9,19 @@ import {
   Alert,
   Image,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBoardingStore } from '@/store/boarding.store';
+import {
+  createBoarding,
+  uploadBoardingImages,
+  submitBoardingForApproval,
+} from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
+import type { BoardingType, GenderPreference } from '@/types/boarding.types';
 
 function ProgressBar({ step, total }: { step: number; total: number }) {
   return (
@@ -27,12 +34,28 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
   );
 }
 
+async function buildAndUploadImages(boardingId: string, imageUris: string[]) {
+  if (imageUris.length === 0) return;
+  const formData = new FormData();
+  imageUris.forEach((uri, index) => {
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+    formData.append('images', {
+      uri,
+      name: `image_${index}.${ext}`,
+      type: mime,
+    } as unknown as Blob);
+  });
+  await uploadBoardingImages(boardingId, formData);
+}
+
 export default function CreateStep5Screen() {
   const { createDraft, setCreateDraft, clearCreateDraft } = useBoardingStore();
   const [rules, setRules] = useState<string[]>(createDraft.rules ?? []);
   const [showRuleInput, setShowRuleInput] = useState(false);
   const [newRule, setNewRule] = useState('');
   const [successVisible, setSuccessVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddRule = () => {
     if (!newRule.trim()) return;
@@ -45,22 +68,106 @@ export default function CreateStep5Screen() {
     setRules((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSaveDraft = () => {
-    setCreateDraft({ rules });
-    Alert.alert('Draft Saved', 'Your listing has been saved as a draft.', [
-      { text: 'OK', onPress: () => { clearCreateDraft(); router.push('/my-listings' as never); } },
-    ]);
+  const buildPayload = () => ({
+    title: createDraft.title ?? '',
+    description: createDraft.description ?? '',
+    city: createDraft.city ?? '',
+    district: createDraft.district ?? '',
+    address: createDraft.address,
+    monthlyRent: createDraft.monthlyRent ?? 0,
+    boardingType: createDraft.boardingType as BoardingType,
+    genderPref: createDraft.genderPref as GenderPreference,
+    latitude: createDraft.latitude,
+    longitude: createDraft.longitude,
+    maxOccupants: createDraft.maxOccupants ?? 1,
+    currentOccupants: createDraft.currentOccupants ?? 0,
+    amenities: createDraft.amenities ?? [],
+    nearUniversity: createDraft.nearUniversity,
+    rules,
+  });
+
+  const validateDraft = () => {
+    if (!createDraft.title?.trim()) {
+      Alert.alert('Incomplete', 'Please go back and enter a title (Step 1).');
+      return false;
+    }
+    if (!createDraft.boardingType) {
+      Alert.alert('Incomplete', 'Please go back and select a boarding type (Step 1).');
+      return false;
+    }
+    if (!createDraft.genderPref) {
+      Alert.alert('Incomplete', 'Please go back and select a gender preference (Step 1).');
+      return false;
+    }
+    if (!createDraft.monthlyRent) {
+      Alert.alert('Incomplete', 'Please go back and enter the monthly rent (Step 1).');
+      return false;
+    }
+    if (!createDraft.city?.trim()) {
+      Alert.alert('Incomplete', 'Please go back and enter a city (Step 2).');
+      return false;
+    }
+    if (!createDraft.district?.trim()) {
+      Alert.alert('Incomplete', 'Please go back and select a district (Step 2).');
+      return false;
+    }
+    return true;
   };
 
-  const handleSubmit = () => {
+  const handleSaveDraft = async () => {
     setCreateDraft({ rules });
-    setSuccessVisible(true);
+    if (!validateDraft()) return;
+
+    setIsSubmitting(true);
+    try {
+      const result = await createBoarding(buildPayload());
+      const boardingId = result.data.boarding.id;
+      await buildAndUploadImages(boardingId, createDraft.imageUris ?? []);
+      Alert.alert('Draft Saved', 'Your listing has been saved as a draft.', [
+        { text: 'OK', onPress: () => { clearCreateDraft(); router.push('/my-listings' as never); } },
+      ]);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Something went wrong. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setCreateDraft({ rules });
+    if (!validateDraft()) return;
+
+    if ((createDraft.imageUris ?? []).length === 0) {
+      Alert.alert('Images Required', 'Please go back and add at least 1 photo (Step 4) before submitting for approval.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await createBoarding(buildPayload());
+      const boardingId = result.data.boarding.id;
+      await buildAndUploadImages(boardingId, createDraft.imageUris ?? []);
+      await submitBoardingForApproval(boardingId);
+      setSuccessVisible(true);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Something went wrong. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const TYPE_LABELS: Record<string, string> = {
     SINGLE_ROOM: 'Single Room', SHARED_ROOM: 'Shared Room',
     ANNEX: 'Annex', HOUSE: 'House',
   };
+
+  const imageUris = createDraft.imageUris ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -146,13 +253,13 @@ export default function CreateStep5Screen() {
           </View>
 
           {/* Image thumbnails */}
-          {(createDraft.images ?? []).length > 0 && (
+          {imageUris.length > 0 && (
             <>
-              <Text style={styles.summaryLabel}>Photos</Text>
+              <Text style={styles.summaryLabel}>Photos ({imageUris.length})</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.thumbRow}>
-                  {(createDraft.images ?? []).map((img) => (
-                    <Image key={img.id} source={{ uri: img.url }} style={styles.thumb} />
+                  {imageUris.map((uri) => (
+                    <Image key={uri} source={{ uri }} style={styles.thumb} />
                   ))}
                 </View>
               </ScrollView>
@@ -164,11 +271,23 @@ export default function CreateStep5Screen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.draftBtn} onPress={handleSaveDraft}>
+        <TouchableOpacity
+          style={[styles.draftBtn, isSubmitting && styles.btnDisabled]}
+          onPress={handleSaveDraft}
+          disabled={isSubmitting}
+        >
           <Text style={styles.draftBtnText}>Save Draft</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-          <Text style={styles.submitBtnText}>Submit for Approval</Text>
+        <TouchableOpacity
+          style={[styles.submitBtn, isSubmitting && styles.btnDisabled]}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color={COLORS.white} />
+          ) : (
+            <Text style={styles.submitBtnText}>Submit for Approval</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -301,6 +420,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   submitBtnText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
+  btnDisabled: { opacity: 0.6 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 30 },
   modalCard: { backgroundColor: COLORS.white, borderRadius: 20, padding: 30, alignItems: 'center', gap: 12, width: '100%' },
   successIcon: { marginBottom: 4 },

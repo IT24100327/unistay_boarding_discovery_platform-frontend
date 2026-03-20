@@ -11,18 +11,11 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { useBoardingStore } from '@/store/boarding.store';
 import { COLORS } from '@/lib/constants';
-import type { BoardingImage } from '@/types/boarding.types';
 
-const MAX_IMAGES = 8;
-
-// Sample placeholder images to simulate picked photos
-const PLACEHOLDER_URLS = [
-  'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=400',
-  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400',
-  'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400',
-];
+const MAX_IMAGES = 10;
 
 function ProgressBar({ step, total }: { step: number; total: number }) {
   return (
@@ -37,52 +30,53 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
 
 export default function CreateStep4Screen() {
   const { createDraft, setCreateDraft } = useBoardingStore();
-  const [images, setImages] = useState<BoardingImage[]>(createDraft.images ?? []);
+  const [imageUris, setImageUris] = useState<string[]>(createDraft.imageUris ?? []);
 
-  const handleAddPhoto = () => {
-    if (images.length >= MAX_IMAGES) {
+  const handleAddPhoto = async () => {
+    if (imageUris.length >= MAX_IMAGES) {
       Alert.alert('Limit Reached', `You can upload a maximum of ${MAX_IMAGES} images.`);
       return;
     }
-    Alert.alert('Add Photo', 'In a real app this would open camera or gallery.', [
-      {
-        text: 'Use sample image',
-        onPress: () => {
-          const url = PLACEHOLDER_URLS[images.length % PLACEHOLDER_URLS.length];
-          const newImage: BoardingImage = {
-            id: `img-${Date.now()}`,
-            url,
-            publicId: '',
-            createdAt: new Date().toISOString(),
-          };
-          setImages((prev) => [...prev, newImage]);
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library to upload images.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit: MAX_IMAGES - imageUris.length,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      const newUris = result.assets.map((a) => a.uri);
+      setImageUris((prev) => {
+        const combined = [...prev, ...newUris];
+        return combined.slice(0, MAX_IMAGES);
+      });
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setImages((prev) => prev.filter((img) => img.id !== id));
+  const handleDelete = (uri: string) => {
+    setImageUris((prev) => prev.filter((u) => u !== uri));
   };
 
-  const handleSetPrimary = (id: string) => {
-    setImages((prev) => {
-      const idx = prev.findIndex((img) => img.id === id);
+  const handleSetPrimary = (uri: string) => {
+    setImageUris((prev) => {
+      const idx = prev.indexOf(uri);
       if (idx <= 0) return prev;
       const reordered = [...prev];
-      const [moved] = reordered.splice(idx, 1);
-      reordered.unshift(moved);
+      reordered.splice(idx, 1);
+      reordered.unshift(uri);
       return reordered;
     });
   };
 
   const handleNext = () => {
-    if (images.length === 0) {
-      Alert.alert('Required', 'Please add at least 1 image.');
-      return;
-    }
-    setCreateDraft({ images });
+    setCreateDraft({ imageUris });
     router.push('/boardings/create/step5' as never);
   };
 
@@ -103,9 +97,9 @@ export default function CreateStep4Screen() {
         <Text style={styles.subtitle}>Add up to {MAX_IMAGES} photos. The first image will be the primary photo.</Text>
 
         <View style={styles.imageGrid}>
-          {images.map((img, index) => (
-            <View key={img.id} style={[styles.imageCell, index === 0 && styles.imageCellPrimary]}>
-              <Image source={{ uri: img.url }} style={styles.cellImage} />
+          {imageUris.map((uri, index) => (
+            <View key={uri} style={[styles.imageCell, index === 0 && styles.imageCellPrimary]}>
+              <Image source={{ uri }} style={styles.cellImage} />
               {index === 0 && (
                 <View style={styles.primaryBadge}>
                   <Text style={styles.primaryBadgeText}>Primary</Text>
@@ -113,14 +107,14 @@ export default function CreateStep4Screen() {
               )}
               <TouchableOpacity
                 style={styles.deleteBtn}
-                onPress={() => handleDelete(img.id)}
+                onPress={() => handleDelete(uri)}
               >
                 <Ionicons name="close-circle" size={22} color={COLORS.red} />
               </TouchableOpacity>
               {index !== 0 && (
                 <TouchableOpacity
                   style={styles.setPrimaryBtn}
-                  onPress={() => handleSetPrimary(img.id)}
+                  onPress={() => handleSetPrimary(uri)}
                 >
                   <Text style={styles.setPrimaryText}>Set Primary</Text>
                 </TouchableOpacity>
@@ -128,7 +122,7 @@ export default function CreateStep4Screen() {
             </View>
           ))}
 
-          {images.length < MAX_IMAGES && (
+          {imageUris.length < MAX_IMAGES && (
             <TouchableOpacity style={styles.addCell} onPress={handleAddPhoto} activeOpacity={0.75}>
               <Ionicons name="add" size={32} color={COLORS.primary} />
               <Text style={styles.addCellText}>Add Photo</Text>
@@ -136,14 +130,14 @@ export default function CreateStep4Screen() {
           )}
         </View>
 
-        {images.length === 0 && (
+        {imageUris.length === 0 && (
           <View style={styles.emptyHint}>
             <Ionicons name="images-outline" size={40} color={COLORS.grayBorder} />
-            <Text style={styles.emptyHintText}>At least 1 image required</Text>
+            <Text style={styles.emptyHintText}>At least 1 image required to submit for approval</Text>
           </View>
         )}
 
-        <Text style={styles.countLabel}>{images.length} / {MAX_IMAGES} photos added</Text>
+        <Text style={styles.countLabel}>{imageUris.length} / {MAX_IMAGES} photos added</Text>
       </ScrollView>
 
       <View style={styles.footer}>

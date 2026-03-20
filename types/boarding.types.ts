@@ -117,6 +117,6 @@ export interface CreateBoardingData {
   latitude?: number;
   longitude?: number;
   amenities: AmenityName[];
-  images: BoardingImage[];
+  imageUris: string[];
   rules: string[];
 }
