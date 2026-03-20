@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
-  getBoardingById,
+  getMyListings,
   updateBoarding,
   submitBoardingForApproval,
   uploadBoardingImages,
@@ -134,9 +134,12 @@ export default function EditBoardingScreen() {
     }
 
     console.log(`${LOG} Fetching boarding by id`, { id });
-    getBoardingById(id)
+    getMyListings()
       .then((result) => {
-        const b = result.data.boarding;
+        const b = result.data.boardings.find((listing) => listing.id === id);
+        if (!b) {
+          throw new Error('Listing not found');
+        }
         console.log(`${LOG} Fetch success`, {
           boardingId: b?.id,
           status: b?.status,
