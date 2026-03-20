@@ -101,7 +101,7 @@ export async function createBoarding(payload: CreateBoardingPayload) {
 export async function updateBoarding(id: string, payload: UpdateBoardingPayload) {
   const response = await api.put<UniStayApiResponse<{ boarding: Boarding }>>(
     `/boardings/${id}`,
-    payload,
+    { ...payload, id },
   );
   return response.data;
 }
