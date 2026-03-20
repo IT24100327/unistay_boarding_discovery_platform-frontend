@@ -290,7 +290,7 @@ export default function BoardingDetailsScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.footerBtn, styles.footerBtnPrimary]}
-              onPress={() => router.push(`/boardings/${boarding.id}/edit` as never)}
+              onPress={() => router.push(`/my-listings/${boarding.id}/edit` as never)}
             >
               <Text style={styles.footerBtnPrimaryText}>Edit Listing</Text>
             </TouchableOpacity>

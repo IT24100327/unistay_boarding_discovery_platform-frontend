@@ -83,6 +83,13 @@ export async function getBoardingBySlug(slug: string) {
   return response.data;
 }
 
+export async function getBoardingById(id: string) {
+  const response = await api.get<UniStayApiResponse<{ boarding: Boarding }>>(
+    `/boardings/${id}`,
+  );
+  return response.data;
+}
+
 export async function getMyListings() {
   const response = await api.get<UniStayApiResponse<{ boardings: Boarding[] }>>(
     '/boardings/my-listings',

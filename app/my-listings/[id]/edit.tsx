@@ -12,7 +12,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getBoardingBySlug, updateBoarding, submitBoardingForApproval } from '@/lib/boarding';
+import { getBoardingById, updateBoarding, submitBoardingForApproval } from '@/lib/boarding';
 import type { UpdateBoardingPayload } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
 import type { Boarding, BoardingType, GenderPreference } from '@/types/boarding.types';
@@ -33,7 +33,7 @@ const GENDER_OPTIONS: { label: string; value: GenderPreference }[] = [
 ];
 
 export default function EditBoardingScreen() {
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
 
   const [boarding, setBoarding] = useState<Boarding | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,8 +47,8 @@ export default function EditBoardingScreen() {
   const [maxOccupants, setMaxOccupants] = useState('1');
 
   useEffect(() => {
-    if (!slug) return;
-    getBoardingBySlug(slug)
+    if (!id) return;
+    getBoardingById(id)
       .then((result) => {
         const b = result.data.boarding;
         setBoarding(b);
@@ -65,7 +65,7 @@ export default function EditBoardingScreen() {
         ]);
       })
       .finally(() => setIsLoading(false));
-  }, [slug]);
+  }, [id]);
 
   const isLocked = boarding?.status === 'ACTIVE';
 

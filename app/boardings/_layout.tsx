@@ -6,7 +6,6 @@ export default function BoardingsLayout() {
       <Stack.Screen name="[slug]/index" />
       <Stack.Screen name="[slug]/gallery" />
       <Stack.Screen name="[slug]/reviews" />
-      <Stack.Screen name="[slug]/edit" />
       <Stack.Screen name="create/step1" />
       <Stack.Screen name="create/step2" />
       <Stack.Screen name="create/step3" />

@@ -146,7 +146,7 @@ export default function MyListingsScreen() {
           <View style={styles.cardActions}>
             <TouchableOpacity
               style={styles.editBtn}
-              onPress={() => router.push(`/boardings/${item.slug}/edit` as never)}
+              onPress={() => router.push(`/my-listings/${item.id}/edit` as never)}
             >
               <Ionicons name="pencil-outline" size={14} color={COLORS.primary} />
               <Text style={styles.editBtnText}>Edit</Text>
