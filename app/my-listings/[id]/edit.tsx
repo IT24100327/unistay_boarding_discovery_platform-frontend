@@ -88,6 +88,7 @@ function SectionHeader({ title }: { title: string }) {
 
 export default function EditBoardingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+    const LOG = '[EditBoardingScreen]';
 
   const [boarding, setBoarding] = useState<Boarding | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -125,10 +126,25 @@ export default function EditBoardingScreen() {
   const [newImageUris, setNewImageUris] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!id) return;
+    console.log(`${LOG} useEffect:start`, { id });
+
+    if (!id) {
+      console.warn(`${LOG} Missing route param: id`);
+      return;
+    }
+
+    console.log(`${LOG} Fetching boarding by id`, { id });
     getBoardingById(id)
       .then((result) => {
         const b = result.data.boarding;
+        console.log(`${LOG} Fetch success`, {
+          boardingId: b?.id,
+          status: b?.status,
+          amenitiesCount: b?.amenities?.length,
+          rulesCount: b?.rules?.length,
+          imagesCount: b?.images?.length,
+        });
+
         setBoarding(b);
         // Basic info
         setTitle(b.title);
@@ -151,12 +167,16 @@ export default function EditBoardingScreen() {
         // Images
         setExistingImages(b.images);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        console.error(`${LOG} Fetch failed`, err);
         Alert.alert('Error', 'Failed to load the listing. Please try again.', [
           { text: 'OK', onPress: () => router.back() },
         ]);
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        console.log(`${LOG} useEffect:finished`);
+        setIsLoading(false);
+      });
   }, [id]);
 
   const isLocked = boarding?.status === 'ACTIVE';
@@ -231,18 +251,19 @@ export default function EditBoardingScreen() {
     setShowRuleInput(false);
   };
 
-  const validate = (): boolean => {
-    if (!title.trim()) { Alert.alert('Required', 'Please enter a title.'); return false; }
-    if (title.trim().length < 10) { Alert.alert('Invalid', 'Title must be at least 10 characters.'); return false; }
-    if (!description.trim()) { Alert.alert('Required', 'Please enter a description.'); return false; }
-    if (description.trim().length < 30) { Alert.alert('Invalid', 'Description must be at least 30 characters.'); return false; }
+    const validate = (): boolean => {
+    if (!title.trim()) { console.warn(`${LOG} Validation failed: title missing`); Alert.alert('Required', 'Please enter a title.'); return false; }
+    if (title.trim().length < 10) { console.warn(`${LOG} Validation failed: title too short`, { length: title.trim().length }); Alert.alert('Invalid', 'Title must be at least 10 characters.'); return false; }
+    if (!description.trim()) { console.warn(`${LOG} Validation failed: description missing`); Alert.alert('Required', 'Please enter a description.'); return false; }
+    if (description.trim().length < 30) { console.warn(`${LOG} Validation failed: description too short`, { length: description.trim().length }); Alert.alert('Invalid', 'Description must be at least 30 characters.'); return false; }
     const rentNum = parseInt(rent, 10);
-    if (isNaN(rentNum) || rentNum < 1000) { Alert.alert('Invalid', 'Monthly rent must be at least LKR 1,000.'); return false; }
-    if (!city.trim()) { Alert.alert('Required', 'Please enter a city.'); return false; }
-    if (!district) { Alert.alert('Required', 'Please select a district.'); return false; }
+    if (isNaN(rentNum) || rentNum < 1000) { console.warn(`${LOG} Validation failed: invalid rent`, { rent }); Alert.alert('Invalid', 'Monthly rent must be at least LKR 1,000.'); return false; }
+    if (!city.trim()) { console.warn(`${LOG} Validation failed: city missing`); Alert.alert('Required', 'Please enter a city.'); return false; }
+    if (!district) { console.warn(`${LOG} Validation failed: district missing`); Alert.alert('Required', 'Please select a district.'); return false; }
     if (lat.trim()) {
       const latNum = parseFloat(lat);
       if (isNaN(latNum) || latNum < SRI_LANKA_LAT_MIN || latNum > SRI_LANKA_LAT_MAX) {
+        console.warn(`${LOG} Validation failed: invalid latitude`, { lat });
         Alert.alert('Invalid', `Latitude must be within Sri Lanka (${SRI_LANKA_LAT_MIN}–${SRI_LANKA_LAT_MAX}).`);
         return false;
       }
@@ -250,15 +271,20 @@ export default function EditBoardingScreen() {
     if (lng.trim()) {
       const lngNum = parseFloat(lng);
       if (isNaN(lngNum) || lngNum < SRI_LANKA_LNG_MIN || lngNum > SRI_LANKA_LNG_MAX) {
+        console.warn(`${LOG} Validation failed: invalid longitude`, { lng });
         Alert.alert('Invalid', `Longitude must be within Sri Lanka (${SRI_LANKA_LNG_MIN}–${SRI_LANKA_LNG_MAX}).`);
         return false;
       }
     }
+    console.log(`${LOG} Validation passed`);
     return true;
   };
 
   const doSave = async () => {
-    if (!boarding) return;
+    if (!boarding) {
+      console.warn(`${LOG} Save aborted: boarding is null`);
+      return;
+    }
     if (!validate()) return;
 
     const payload: UpdateBoardingPayload = {
@@ -278,18 +304,32 @@ export default function EditBoardingScreen() {
     if (lng.trim()) payload.longitude = parseFloat(lng);
     if (university) payload.nearUniversity = university;
 
+    console.log(`${LOG} Save start`, {
+      boardingId: boarding.id,
+      deletedImageIdsCount: deletedImageIds.length,
+      newImageUrisCount: newImageUris.length,
+      payload,
+    });
+
     setIsSaving(true);
     try {
+      console.log(`${LOG} Calling updateBoarding`);
       const result = await updateBoarding(boarding.id, payload);
       const updatedId = result.data.boarding.id;
+      console.log(`${LOG} updateBoarding success`, { updatedId });
 
       // Delete removed images
       for (const imgId of deletedImageIds) {
+        console.log(`${LOG} Deleting image`, { imgId });
         await deleteBoardingImage(updatedId, imgId);
+      }
+      if (deletedImageIds.length > 0) {
+        console.log(`${LOG} Deleted images done`, { count: deletedImageIds.length });
       }
 
       // Upload new images
       if (newImageUris.length > 0) {
+        console.log(`${LOG} Uploading new images`, { count: newImageUris.length });
         const formData = new FormData();
         newImageUris.forEach((uri, index) => {
           const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
@@ -297,10 +337,13 @@ export default function EditBoardingScreen() {
           formData.append('images', { uri, name: `image_${index}.${ext}`, type: mime } as unknown as Blob);
         });
         await uploadBoardingImages(updatedId, formData);
+        console.log(`${LOG} Image upload success`);
       }
 
       if (isLocked) {
+        console.log(`${LOG} Submitting for approval`, { updatedId });
         await submitBoardingForApproval(updatedId);
+        console.log(`${LOG} submitBoardingForApproval success`);
         Alert.alert(
           'Resubmitted',
           'Your changes have been saved and the listing has been submitted for re-review.',
@@ -312,13 +355,17 @@ export default function EditBoardingScreen() {
         ]);
       }
     } catch (err: unknown) {
+      console.error(`${LOG} Save failed`, err);
       const data = (err as ApiError)?.response?.data;
+      console.error(`${LOG} Save failed response data`, data);
+
       const message =
         data?.details?.map((d) => d.message).join('\n') ??
         data?.message ??
         'Failed to save. Please try again.';
       Alert.alert('Error', message);
     } finally {
+      console.log(`${LOG} Save finished`);
       setIsSaving(false);
     }
   };
