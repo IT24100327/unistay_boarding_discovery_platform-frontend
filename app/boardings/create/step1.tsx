@@ -96,12 +96,14 @@ export default function CreateStep1Screen() {
     setCreateDraft({
       title: title.trim(),
       description: description.trim(),
-      boardingType: type as BoardingType,
-      genderPref: gender as GenderPreference,
+      boardingType: type,
+      genderPref: gender,
+      maxOccupants: parseInt(maxOccupants, 10) || 1,
       monthlyRent: parseInt(rent, 10) || 0,
+      nearUniversity: university,
     });
-    Alert.alert('Saved', 'Draft saved successfully.', [
-      { text: 'OK', onPress: () => router.push('/my-listings' as never) },
+    Alert.alert('Progress Saved', 'Your progress has been saved locally. Complete all steps to create your listing.', [
+      { text: 'OK', onPress: () => router.back() },
     ]);
   };
 

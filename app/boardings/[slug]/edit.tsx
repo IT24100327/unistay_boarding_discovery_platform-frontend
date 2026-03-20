@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,23 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { getBoardingBySlug, updateBoarding, submitBoardingForApproval } from '@/lib/boarding';
+import type { UpdateBoardingPayload } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
-import type { BoardingType, GenderPreference } from '@/types/boarding.types';
+import type { Boarding, BoardingType, GenderPreference } from '@/types/boarding.types';
+
+type ApiError = { response?: { data?: { message?: string; details?: { field: string; message: string }[] } } };
 
 const BOARDING_TYPES: { label: string; value: BoardingType }[] = [
   { label: 'Single Room', value: 'SINGLE_ROOM' },
   { label: 'Shared Room', value: 'SHARED_ROOM' },
   { label: 'Annex', value: 'ANNEX' },
-  { label: 'Full House', value: 'HOUSE' },
+  { label: 'House', value: 'HOUSE' },
 ];
 
 const GENDER_OPTIONS: { label: string; value: GenderPreference }[] = [
@@ -30,16 +34,91 @@ const GENDER_OPTIONS: { label: string; value: GenderPreference }[] = [
 
 export default function EditBoardingScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const boarding = SAMPLE_BOARDINGS.find((b) => b.id === slug || b.slug === slug) ?? SAMPLE_BOARDINGS[0];
 
-  const isLocked = boarding.status === 'ACTIVE';
+  const [boarding, setBoarding] = useState<Boarding | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [title, setTitle] = useState(boarding.title);
-  const [description, setDescription] = useState(boarding.description);
-  const [type, setType] = useState<BoardingType>(boarding.boardingType);
-  const [gender, setGender] = useState<GenderPreference>(boarding.genderPref);
-  const [rent, setRent] = useState(String(boarding.monthlyRent));
-  const [maxOccupants, setMaxOccupants] = useState(String(boarding.maxOccupants));
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [type, setType] = useState<BoardingType>('SINGLE_ROOM');
+  const [gender, setGender] = useState<GenderPreference>('ANY');
+  const [rent, setRent] = useState('');
+  const [maxOccupants, setMaxOccupants] = useState('1');
+
+  useEffect(() => {
+    if (!slug) return;
+    getBoardingBySlug(slug)
+      .then((result) => {
+        const b = result.data.boarding;
+        setBoarding(b);
+        setTitle(b.title);
+        setDescription(b.description);
+        setType(b.boardingType);
+        setGender(b.genderPref);
+        setRent(String(b.monthlyRent));
+        setMaxOccupants(String(b.maxOccupants));
+      })
+      .catch(() => {
+        Alert.alert('Error', 'Failed to load the listing. Please try again.', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      })
+      .finally(() => setIsLoading(false));
+  }, [slug]);
+
+  const isLocked = boarding?.status === 'ACTIVE';
+
+  const validate = (): boolean => {
+    if (!title.trim()) { Alert.alert('Required', 'Please enter a title.'); return false; }
+    if (title.trim().length < 10) { Alert.alert('Invalid', 'Title must be at least 10 characters.'); return false; }
+    if (!description.trim()) { Alert.alert('Required', 'Please enter a description.'); return false; }
+    if (description.trim().length < 30) { Alert.alert('Invalid', 'Description must be at least 30 characters.'); return false; }
+    const rentNum = parseInt(rent, 10);
+    if (isNaN(rentNum) || rentNum < 1000) { Alert.alert('Invalid', 'Monthly rent must be at least LKR 1,000.'); return false; }
+    return true;
+  };
+
+  const doSave = async () => {
+    if (!boarding) return;
+    if (!validate()) return;
+
+    const payload: UpdateBoardingPayload = {
+      title: title.trim(),
+      description: description.trim(),
+      boardingType: type,
+      genderPref: gender,
+      monthlyRent: parseInt(rent, 10),
+      maxOccupants: parseInt(maxOccupants, 10),
+    };
+
+    setIsSaving(true);
+    try {
+      const result = await updateBoarding(boarding.id, payload);
+      const updatedId = result.data.boarding.id;
+      if (isLocked) {
+        await submitBoardingForApproval(updatedId);
+        Alert.alert(
+          'Resubmitted',
+          'Your changes have been saved and the listing has been submitted for re-review.',
+          [{ text: 'OK', onPress: () => router.back() }],
+        );
+      } else {
+        Alert.alert('Saved', 'Changes saved successfully.', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      }
+    } catch (err: unknown) {
+      const data = (err as ApiError)?.response?.data;
+      const message =
+        data?.details?.map((d) => d.message).join('\n') ??
+        data?.message ??
+        'Failed to save. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSave = () => {
     if (isLocked) {
@@ -48,15 +127,21 @@ export default function EditBoardingScreen() {
         'Saving changes will temporarily deactivate this listing for re-review. Continue?',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Continue', onPress: () => { router.back(); } },
+          { text: 'Continue', onPress: doSave },
         ],
       );
       return;
     }
-    Alert.alert('Saved', 'Changes saved successfully.', [
-      { text: 'OK', onPress: () => router.back() },
-    ]);
+    doSave();
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color={COLORS.primary} style={styles.loadingIndicator} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -147,8 +232,16 @@ export default function EditBoardingScreen() {
         <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-          <Text style={styles.saveBtnText}>{isLocked ? 'Save & Resubmit' : 'Save Changes'}</Text>
+        <TouchableOpacity
+          style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+          onPress={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <ActivityIndicator size="small" color={COLORS.white} />
+          ) : (
+            <Text style={styles.saveBtnText}>{isLocked ? 'Save & Resubmit' : 'Save Changes'}</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -157,6 +250,7 @@ export default function EditBoardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  loadingIndicator: { flex: 1, alignSelf: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -242,4 +336,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveBtnText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
+  saveBtnDisabled: { opacity: 0.7 },
 });
