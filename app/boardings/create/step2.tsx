@@ -21,6 +21,11 @@ const DISTRICTS = [
   'Badulla', 'Monaragala', 'Ratnapura', 'Kegalle',
 ];
 
+const SRI_LANKA_LAT_MIN = 5.9;
+const SRI_LANKA_LAT_MAX = 9.9;
+const SRI_LANKA_LNG_MIN = 79.5;
+const SRI_LANKA_LNG_MAX = 81.9;
+
 function ProgressBar({ step, total }: { step: number; total: number }) {
   return (
     <View style={styles.progressContainer}>
@@ -53,6 +58,12 @@ export default function CreateStep2Screen() {
     if (!address.trim()) { Alert.alert('Required', 'Please enter an address.'); return false; }
     if (!city.trim()) { Alert.alert('Required', 'Please enter a city.'); return false; }
     if (!district) { Alert.alert('Required', 'Please select a district.'); return false; }
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (!lat || isNaN(latNum)) { Alert.alert('Required', 'Please set the map location (latitude).'); return false; }
+    if (!lng || isNaN(lngNum)) { Alert.alert('Required', 'Please set the map location (longitude).'); return false; }
+    if (latNum < SRI_LANKA_LAT_MIN || latNum > SRI_LANKA_LAT_MAX) { Alert.alert('Invalid', `Latitude must be within Sri Lanka (${SRI_LANKA_LAT_MIN} – ${SRI_LANKA_LAT_MAX}).`); return false; }
+    if (lngNum < SRI_LANKA_LNG_MIN || lngNum > SRI_LANKA_LNG_MAX) { Alert.alert('Invalid', `Longitude must be within Sri Lanka (${SRI_LANKA_LNG_MIN} – ${SRI_LANKA_LNG_MAX}).`); return false; }
     return true;
   };
 
@@ -62,8 +73,8 @@ export default function CreateStep2Screen() {
       address: address.trim(),
       city: city.trim(),
       district,
-      latitude: parseFloat(lat) || undefined,
-      longitude: parseFloat(lng) || undefined,
+      latitude: parseFloat(lat),
+      longitude: parseFloat(lng),
     });
     router.push('/boardings/create/step3' as never);
   };
@@ -150,7 +161,8 @@ export default function CreateStep2Screen() {
               placeholder="e.g. 7.0000"
               placeholderTextColor={COLORS.grayBorder}
               value={lat}
-              editable={false}
+              onChangeText={setLat}
+              keyboardType="decimal-pad"
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -160,7 +172,8 @@ export default function CreateStep2Screen() {
               placeholder="e.g. 79.9000"
               placeholderTextColor={COLORS.grayBorder}
               value={lng}
-              editable={false}
+              onChangeText={setLng}
+              keyboardType="decimal-pad"
             />
           </View>
         </View>

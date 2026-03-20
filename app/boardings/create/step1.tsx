@@ -68,9 +68,13 @@ export default function CreateStep1Screen() {
 
   const validate = () => {
     if (!title.trim()) { Alert.alert('Required', 'Please enter a title.'); return false; }
+    if (title.trim().length < 10) { Alert.alert('Invalid', 'Title must be at least 10 characters.'); return false; }
+    if (!description.trim()) { Alert.alert('Required', 'Please enter a description.'); return false; }
+    if (description.trim().length < 30) { Alert.alert('Invalid', 'Description must be at least 30 characters.'); return false; }
     if (!type) { Alert.alert('Required', 'Please select a boarding type.'); return false; }
     if (!gender) { Alert.alert('Required', 'Please select a gender preference.'); return false; }
     if (!rent || isNaN(Number(rent))) { Alert.alert('Required', 'Please enter a valid monthly rent.'); return false; }
+    if (Number(rent) < 1000) { Alert.alert('Invalid', 'Monthly rent must be at least LKR 1,000.'); return false; }
     return true;
   };
 
@@ -174,7 +178,7 @@ export default function CreateStep1Screen() {
           <Text style={styles.stepperValue}>{maxOccupants}</Text>
           <TouchableOpacity
             style={styles.stepperBtn}
-            onPress={() => setMaxOccupants((v) => String(parseInt(v, 10) + 1))}
+            onPress={() => setMaxOccupants((v) => String(Math.min(20, parseInt(v, 10) + 1)))}
           >
             <Ionicons name="add" size={20} color={COLORS.primary} />
           </TouchableOpacity>

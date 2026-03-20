@@ -50,13 +50,15 @@ async function buildAndUploadImages(boardingId: string, imageUris: string[]) {
   await uploadBoardingImages(boardingId, formData);
 }
 
-type ApiError = { response?: { data?: { message?: string | string[] } } };
+type ApiError = { response?: { data?: { message?: string; details?: { field: string; message: string }[] } } };
 
 function extractErrorMessage(err: unknown): string {
   const data = (err as ApiError)?.response?.data;
   if (!data) return 'Something went wrong. Please try again.';
-  const { message } = data;
-  if (Array.isArray(message)) return message.join('\n');
+  const { details, message } = data;
+  if (details && details.length > 0) {
+    return details.map((d) => d.message).join('\n');
+  }
   return message ?? 'Something went wrong. Please try again.';
 }
 
@@ -82,33 +84,40 @@ export default function CreateStep5Screen() {
   const buildPayload = (): CreateBoardingPayload => {
     const payload: CreateBoardingPayload = {
       title: createDraft.title ?? '',
+      description: createDraft.description ?? '',
       city: createDraft.city ?? '',
       district: createDraft.district ?? '',
       monthlyRent: createDraft.monthlyRent ?? 0,
       boardingType: createDraft.boardingType as BoardingType,
       genderPref: createDraft.genderPref as GenderPreference,
+      latitude: createDraft.latitude ?? 0,
+      longitude: createDraft.longitude ?? 0,
       maxOccupants: createDraft.maxOccupants ?? 1,
       amenities: createDraft.amenities ?? [],
       rules,
     };
-    const desc = createDraft.description?.trim();
-    if (desc) payload.description = desc;
     const addr = createDraft.address?.trim();
     if (addr) payload.address = addr;
     const uni = createDraft.nearUniversity?.trim();
     if (uni) payload.nearUniversity = uni;
-    if (createDraft.latitude !== null && createDraft.latitude !== undefined && !isNaN(createDraft.latitude)) {
-      payload.latitude = createDraft.latitude;
-    }
-    if (createDraft.longitude !== null && createDraft.longitude !== undefined && !isNaN(createDraft.longitude)) {
-      payload.longitude = createDraft.longitude;
-    }
     return payload;
   };
 
   const validateDraft = () => {
     if (!createDraft.title?.trim()) {
       Alert.alert('Incomplete', 'Please go back and enter a title (Step 1).');
+      return false;
+    }
+    if ((createDraft.title?.trim().length ?? 0) < 10) {
+      Alert.alert('Incomplete', 'Title must be at least 10 characters (Step 1).');
+      return false;
+    }
+    if (!createDraft.description?.trim()) {
+      Alert.alert('Incomplete', 'Please go back and enter a description (Step 1).');
+      return false;
+    }
+    if ((createDraft.description?.trim().length ?? 0) < 30) {
+      Alert.alert('Incomplete', 'Description must be at least 30 characters (Step 1).');
       return false;
     }
     if (!createDraft.boardingType) {
@@ -119,8 +128,8 @@ export default function CreateStep5Screen() {
       Alert.alert('Incomplete', 'Please go back and select a gender preference (Step 1).');
       return false;
     }
-    if (!createDraft.monthlyRent) {
-      Alert.alert('Incomplete', 'Please go back and enter the monthly rent (Step 1).');
+    if (!createDraft.monthlyRent || createDraft.monthlyRent < 1000) {
+      Alert.alert('Incomplete', 'Monthly rent must be at least LKR 1,000 (Step 1).');
       return false;
     }
     if (!createDraft.city?.trim()) {
@@ -129,6 +138,16 @@ export default function CreateStep5Screen() {
     }
     if (!createDraft.district?.trim()) {
       Alert.alert('Incomplete', 'Please go back and select a district (Step 2).');
+      return false;
+    }
+    const lat = createDraft.latitude;
+    const lng = createDraft.longitude;
+    if (lat === undefined || lat === null || isNaN(lat)) {
+      Alert.alert('Incomplete', 'Please go back and set the map location (Step 2).');
+      return false;
+    }
+    if (lng === undefined || lng === null || isNaN(lng)) {
+      Alert.alert('Incomplete', 'Please go back and set the map location (Step 2).');
       return false;
     }
     return true;
