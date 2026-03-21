@@ -336,11 +336,36 @@ export default function BoardingDetailsScreen() {
           </>
         ) : (
           <>
-            <TouchableOpacity style={[styles.footerBtn, styles.footerBtnSecondary]}>
-              <Text style={styles.footerBtnSecondaryText}>Contact Owner</Text>
-            </TouchableOpacity>
+            {!isOwner && (
+              <TouchableOpacity
+                style={[styles.footerBtn, styles.footerBtnSecondary]}
+                onPress={() =>
+                  router.push({
+                    pathname: `/boardings/${slug}/schedule-visit` as never,
+                    params: {
+                      boardingId: boarding.id,
+                      boardingTitle: boarding.title,
+                    },
+                  })
+                }
+              >
+                <Text style={styles.footerBtnSecondaryText}>Schedule Visit</Text>
+              </TouchableOpacity>
+            )}
             {!isOwner && isAvailable && (
-              <TouchableOpacity style={[styles.footerBtn, styles.footerBtnPrimary]}>
+              <TouchableOpacity
+                style={[styles.footerBtn, styles.footerBtnPrimary]}
+                onPress={() =>
+                  router.push({
+                    pathname: `/boardings/${slug}/apply-reservation` as never,
+                    params: {
+                      boardingId: boarding.id,
+                      boardingTitle: boarding.title,
+                      monthlyRent: String(boarding.monthlyRent),
+                    },
+                  })
+                }
+              >
                 <Text style={styles.footerBtnPrimaryText}>Request Reservation</Text>
               </TouchableOpacity>
             )}

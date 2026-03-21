@@ -147,6 +147,28 @@ function StudentHome({ firstName }: { firstName: string }) {
         <Text style={styles.exploreBtnText}>Explore All Boardings</Text>
       </TouchableOpacity>
 
+      {/* Quick Links */}
+      <View style={styles.quickActionsGrid}>
+        <TouchableOpacity
+          style={styles.quickActionCard}
+          onPress={() => router.push('/visits' as never)}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="eye-outline" size={22} color={COLORS.orange} />
+          </View>
+          <Text style={styles.quickActionLabel}>My Visits</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.quickActionCard}
+          onPress={() => router.push('/reservations' as never)}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
+            <Ionicons name="calendar-outline" size={22} color={COLORS.green} />
+          </View>
+          <Text style={styles.quickActionLabel}>My Reservations</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={{ height: 28 }} />
     </ScrollView>
   );
@@ -189,6 +211,40 @@ function OwnerHome({ firstName }: { firstName: string }) {
           <Ionicons name="home-outline" size={22} color={COLORS.primary} />
           <Text style={styles.ownerStatValue}>{ownerListings.length}</Text>
           <Text style={styles.ownerStatLabel}>Total Listings</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Quick Actions */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Manage</Text>
+      </View>
+      <View style={styles.quickActionsGrid}>
+        <TouchableOpacity
+          style={styles.quickActionCard}
+          onPress={() => router.push('/my-listings/visits' as never)}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="eye-outline" size={22} color={COLORS.orange} />
+          </View>
+          <Text style={styles.quickActionLabel}>Visit Requests</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.quickActionCard}
+          onPress={() => router.push('/my-listings/reservations' as never)}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: '#EBF0FF' }]}>
+            <Ionicons name="document-text-outline" size={22} color={COLORS.primary} />
+          </View>
+          <Text style={styles.quickActionLabel}>Applications</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.quickActionCard}
+          onPress={() => router.push('/my-listings/tenants' as never)}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
+            <Ionicons name="people-outline" size={22} color={COLORS.green} />
+          </View>
+          <Text style={styles.quickActionLabel}>Tenants</Text>
         </TouchableOpacity>
       </View>
 
@@ -402,6 +458,35 @@ const styles = StyleSheet.create({
   },
   ownerStatValue: { fontSize: 20, fontWeight: '800', color: COLORS.text, marginTop: 4 },
   ownerStatLabel: { fontSize: 11, fontWeight: '500', color: COLORS.textSecondary },
+
+  // Quick Actions Grid
+  quickActionsGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 10,
+    marginBottom: 20,
+  },
+  quickActionCard: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 14,
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  quickActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: { fontSize: 11, fontWeight: '600', color: COLORS.text, textAlign: 'center' },
 
   // Empty listing card
   emptyListingCard: {
