@@ -13,7 +13,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
-import { useBoardingStore, SAMPLE_BOARDINGS, SAMPLE_REVIEWS } from '@/store/boarding.store';
+import { SAMPLE_BOARDINGS, SAMPLE_REVIEWS } from '@/store/boarding.store';
+import { useSaveBoarding } from '@/hooks/useSaveBoarding';
 import { COLORS } from '@/lib/constants';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -59,10 +60,9 @@ function AmenityRow({ icon, label, active }: { icon: string; label: string; acti
 export default function BoardingDetailsScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { user } = useAuthStore();
-  const { toggleSaved, isSaved } = useBoardingStore();
 
   const boarding = SAMPLE_BOARDINGS.find((b) => b.slug === slug || b.id === slug) ?? SAMPLE_BOARDINGS[0];
-  const saved = isSaved(boarding.id);
+  const { saved, toggleSave } = useSaveBoarding(boarding.id);
   const isOwner = user?.role === 'OWNER';
   const isOwnListing = isOwner && boarding.owner.id === 'o1';
   const [activeImage, setActiveImage] = useState(0);
@@ -116,7 +116,7 @@ export default function BoardingDetailsScreen() {
                 <Ionicons name="share-outline" size={20} color={COLORS.white} />
               </TouchableOpacity>
               {!isOwner && (
-                <TouchableOpacity style={styles.carouselBtn} onPress={() => toggleSaved(boarding.id)}>
+                <TouchableOpacity style={styles.carouselBtn} onPress={toggleSave}>
                   <Ionicons name={saved ? 'heart' : 'heart-outline'} size={20} color={saved ? COLORS.red : COLORS.white} />
                 </TouchableOpacity>
               )}

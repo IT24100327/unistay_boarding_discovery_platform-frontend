@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
 import { useBoardingStore, SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { useSaveBoarding } from '@/hooks/useSaveBoarding';
 import { COLORS } from '@/lib/constants';
 import type { Boarding, SortOption } from '@/types/boarding.types';
 
@@ -43,8 +44,7 @@ function AmenityIcon({ name, active }: { name: string; active: boolean }) {
 
 function BoardingListCard({ item }: { item: Boarding }) {
   const { user } = useAuthStore();
-  const { toggleSaved, isSaved } = useBoardingStore();
-  const saved = isSaved(item.id);
+  const { saved, toggleSave } = useSaveBoarding(item.id);
   const isStudent = user?.role !== 'OWNER';
   const primaryImage = item.images[0];
 
@@ -81,7 +81,7 @@ function BoardingListCard({ item }: { item: Boarding }) {
         <View style={styles.listCardHeader}>
           <Text style={styles.listCardTitle} numberOfLines={1}>{item.title}</Text>
           {isStudent && (
-            <TouchableOpacity onPress={() => toggleSaved(item.id)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+            <TouchableOpacity onPress={toggleSave} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
               <Ionicons name={saved ? 'heart' : 'heart-outline'} size={20} color={saved ? COLORS.red : COLORS.gray} />
             </TouchableOpacity>
           )}

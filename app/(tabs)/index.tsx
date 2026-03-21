@@ -12,14 +12,14 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
-import { useBoardingStore, SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { useSaveBoarding } from '@/hooks/useSaveBoarding';
 import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
 
 // ─── Boarding Card ─────────────────────────────────────────────────────────────
 function BoardingCard({ item, showOccupancy }: { item: Boarding; showOccupancy?: boolean }) {
-  const { toggleSaved, isSaved } = useBoardingStore();
-  const saved = isSaved(item.id);
+  const { saved, toggleSave } = useSaveBoarding(item.id);
   const primaryImage = item.images[0];
 
   return (
@@ -46,7 +46,7 @@ function BoardingCard({ item, showOccupancy }: { item: Boarding; showOccupancy?:
         {!showOccupancy && (
           <TouchableOpacity
             style={styles.heartBtn}
-            onPress={() => toggleSaved(item.id)}
+            onPress={toggleSave}
             hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
           >
             <Ionicons

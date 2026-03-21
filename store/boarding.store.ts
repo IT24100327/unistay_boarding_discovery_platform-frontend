@@ -8,6 +8,7 @@ interface BoardingState {
   createDraft: Partial<CreateBoardingData>;
   toggleSaved: (id: string) => void;
   isSaved: (id: string) => boolean;
+  setSavedIds: (ids: string[]) => void;
   setFilters: (filters: BoardingFilters) => void;
   clearFilters: () => void;
   setSortOption: (sort: SortOption) => void;
@@ -31,6 +32,8 @@ export const useBoardingStore = create<BoardingState>((set, get) => ({
   },
 
   isSaved: (id) => get().savedIds.includes(id),
+
+  setSavedIds: (ids) => set({ savedIds: ids }),
 
   setFilters: (filters) => set({ filters }),
   clearFilters: () => set({ filters: {} }),

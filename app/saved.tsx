@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,17 +7,43 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useBoardingStore, SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { getSavedBoardings, unsaveBoarding } from '@/lib/saved-boarding';
+import { useBoardingStore } from '@/store/boarding.store';
 import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
 
 export default function SavedBoardingsScreen() {
-  const { savedIds, toggleSaved } = useBoardingStore();
-  const savedBoardings = SAMPLE_BOARDINGS.filter((b) => savedIds.includes(b.id));
+  const { setSavedIds } = useBoardingStore();
+  const [boardings, setBoardings] = useState<Boarding[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadSaved = useCallback(async (refresh = false) => {
+    if (refresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+    try {
+      const result = await getSavedBoardings();
+      const saved = result.data.saved;
+      setBoardings(saved.map((s) => s.boarding));
+      setSavedIds(saved.map((s) => s.boardingId));
+    } catch {
+      Alert.alert('Error', 'Failed to load saved boardings. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [setSavedIds]);
+
+  useFocusEffect(useCallback(() => { loadSaved(); }, [loadSaved]));
 
   const handleUnsave = (boarding: Boarding) => {
     Alert.alert(
@@ -25,10 +51,45 @@ export default function SavedBoardingsScreen() {
       `Remove "${boarding.title}" from your saved list?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => toggleSaved(boarding.id) },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            // Optimistic update
+            setBoardings((prev) => prev.filter((b) => b.id !== boarding.id));
+            setSavedIds(
+              useBoardingStore.getState().savedIds.filter((id) => id !== boarding.id),
+            );
+            try {
+              await unsaveBoarding(boarding.id);
+            } catch {
+              // Revert on failure
+              setBoardings((prev) => [...prev, boarding]);
+              setSavedIds([...useBoardingStore.getState().savedIds, boarding.id]);
+              Alert.alert('Error', 'Failed to remove from saved. Please try again.');
+            }
+          },
+        },
       ],
     );
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Saved Boardings</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -41,10 +102,17 @@ export default function SavedBoardingsScreen() {
       </View>
 
       <FlatList
-        data={savedBoardings}
+        data={boardings}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => loadSaved(true)}
+            tintColor={COLORS.primary}
+          />
+        }
         renderItem={({ item }) => {
           const primaryImage = item.images[0];
           return (
@@ -67,7 +135,10 @@ export default function SavedBoardingsScreen() {
                 <Text style={styles.cardAddress} numberOfLines={1}>
                   <Ionicons name="location-outline" size={11} color={COLORS.gray} /> {item.city}, {item.district}
                 </Text>
-                <Text style={styles.cardPrice}>LKR {item.monthlyRent.toLocaleString()}<Text style={styles.perMonth}>/mo</Text></Text>
+                <Text style={styles.cardPrice}>
+                  LKR {item.monthlyRent.toLocaleString()}
+                  <Text style={styles.perMonth}>/mo</Text>
+                </Text>
               </View>
               <TouchableOpacity
                 style={styles.unsaveBtn}
@@ -99,6 +170,7 @@ export default function SavedBoardingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
