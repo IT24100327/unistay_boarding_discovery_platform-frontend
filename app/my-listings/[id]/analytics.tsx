@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { getMyListings } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
+import type { Boarding } from '@/types/boarding.types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -79,7 +81,18 @@ function LineChart({ data }: { data: { label: string; value: number }[] }) {
 
 export default function ListingAnalyticsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const boarding = SAMPLE_BOARDINGS.find((b) => b.id === id) ?? SAMPLE_BOARDINGS[0];
+  const [boarding, setBoarding] = useState<Boarding | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    getMyListings()
+      .then((r) => {
+        const found = r.data.boardings.find((b) => b.id === id);
+        setBoarding(found ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [id]);
 
   const viewsByMonth = [
     { label: 'Oct', value: 45 },
@@ -115,12 +128,19 @@ export default function ListingAnalyticsScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Analytics</Text>
-          <Text style={styles.headerSubtitle} numberOfLines={1}>{boarding.title}</Text>
+          {boarding && (
+            <Text style={styles.headerSubtitle} numberOfLines={1}>{boarding.title}</Text>
+          )}
         </View>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Stats grid */}
         <View style={styles.statsGrid}>
           <StatCard icon="eye-outline" label="Total Views" value={474} color={COLORS.primary} bg="#EBF0FF" />
@@ -164,13 +184,15 @@ export default function ListingAnalyticsScreen() {
         </View>
 
         <View style={{ height: 30 }} />
-      </ScrollView>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

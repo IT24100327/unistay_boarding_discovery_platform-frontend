@@ -1,16 +1,18 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SAMPLE_BOARDINGS, SAMPLE_REVIEWS } from '@/store/boarding.store';
+import { getBoardingBySlug, getBoardingReviews } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
+import type { Boarding, BoardingReview } from '@/types/boarding.types';
 
 function StarRow({ rating }: { rating: number }) {
   return (
@@ -42,16 +44,24 @@ function RatingBar({ stars, count, total }: { stars: number; count: number; tota
 
 export default function BoardingReviewsScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const boarding = SAMPLE_BOARDINGS.find((b) => b.slug === slug || b.id === slug) ?? SAMPLE_BOARDINGS[0];
+  const [boarding, setBoarding] = useState<Boarding | null>(null);
+  const [reviews, setReviews] = useState<BoardingReview[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const totalReviews = SAMPLE_REVIEWS.length;
+  useEffect(() => {
+    if (!slug) return;
+    Promise.all([
+      getBoardingBySlug(slug).then((r) => setBoarding(r.data.boarding)).catch(() => {}),
+      getBoardingReviews(slug).then((r) => setReviews(r.data.reviews)).catch(() => setReviews([])),
+    ]).finally(() => setIsLoading(false));
+  }, [slug]);
+
+  const totalReviews = reviews.length;
   const averageRating =
-    totalReviews > 0
-      ? SAMPLE_REVIEWS.reduce((sum, r) => sum + r.rating, 0) / totalReviews
-      : 0;
+    totalReviews > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
   const ratingBreakdown = [5, 4, 3, 2, 1].map((s) => ({
     stars: s,
-    count: SAMPLE_REVIEWS.filter((r) => Math.round(r.rating) === s).length,
+    count: reviews.filter((r) => Math.round(r.rating) === s).length,
   }));
 
   return (
@@ -60,58 +70,67 @@ export default function BoardingReviewsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Reviews</Text>
+        <Text style={styles.headerTitle}>
+          {boarding ? `Reviews · ${boarding.title}` : 'Reviews'}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Overall rating */}
-        <View style={styles.overallCard}>
-          <View style={styles.overallLeft}>
-            <Text style={styles.overallScore}>{averageRating.toFixed(1)}</Text>
-            <StarRow rating={averageRating} />
-            <Text style={styles.overallCount}>{totalReviews} reviews</Text>
-          </View>
-          <View style={styles.overallRight}>
-            {ratingBreakdown.map(({ stars, count }) => (
-              <RatingBar key={stars} stars={stars} count={count} total={totalReviews} />
-            ))}
-          </View>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
-
-        {/* Reviews list */}
-        {SAMPLE_REVIEWS.map((review) => (
-          <View key={review.id} style={styles.reviewCard}>
-            <View style={styles.reviewHeader}>
-              <View style={styles.reviewAvatar}>
-                <Text style={styles.reviewAvatarText}>{review.reviewerName.charAt(0)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.reviewerName}>{review.reviewerName}</Text>
-                <StarRow rating={review.rating} />
-              </View>
-              <Text style={styles.reviewDate}>
-                {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-              </Text>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Overall rating */}
+          <View style={styles.overallCard}>
+            <View style={styles.overallLeft}>
+              <Text style={styles.overallScore}>{averageRating.toFixed(1)}</Text>
+              <StarRow rating={averageRating} />
+              <Text style={styles.overallCount}>{totalReviews} reviews</Text>
             </View>
-            <Text style={styles.reviewComment}>{review.comment}</Text>
+            <View style={styles.overallRight}>
+              {ratingBreakdown.map(({ stars, count }) => (
+                <RatingBar key={stars} stars={stars} count={count} total={totalReviews} />
+              ))}
+            </View>
           </View>
-        ))}
 
-        {SAMPLE_REVIEWS.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons name="star-outline" size={56} color={COLORS.grayBorder} />
-            <Text style={styles.emptyTitle}>No reviews yet</Text>
-            <Text style={styles.emptySub}>Be the first to leave a review</Text>
-          </View>
-        )}
-      </ScrollView>
+          {/* Reviews list */}
+          {reviews.map((review) => (
+            <View key={review.id} style={styles.reviewCard}>
+              <View style={styles.reviewHeader}>
+                <View style={styles.reviewAvatar}>
+                  <Text style={styles.reviewAvatarText}>{review.reviewerName.charAt(0)}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.reviewerName}>{review.reviewerName}</Text>
+                  <StarRow rating={review.rating} />
+                </View>
+                <Text style={styles.reviewDate}>
+                  {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                </Text>
+              </View>
+              <Text style={styles.reviewComment}>{review.comment}</Text>
+            </View>
+          ))}
+
+          {reviews.length === 0 && (
+            <View style={styles.emptyState}>
+              <Ionicons name="star-outline" size={56} color={COLORS.grayBorder} />
+              <Text style={styles.emptyTitle}>No reviews yet</Text>
+              <Text style={styles.emptySub}>Be the first to leave a review</Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

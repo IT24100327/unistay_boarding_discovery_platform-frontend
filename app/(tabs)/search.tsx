@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,16 @@ import {
   TouchableOpacity,
   Image,
   ListRenderItem,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
-import { useBoardingStore, SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { useBoardingStore } from '@/store/boarding.store';
 import { useSaveBoarding } from '@/hooks/useSaveBoarding';
+import { searchBoardings } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
 import type { Boarding, SortOption } from '@/types/boarding.types';
 
@@ -116,7 +119,55 @@ function BoardingListCard({ item }: { item: Boarding }) {
 export default function ExploreScreen() {
   const [query, setQuery] = useState('');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [boardings, setBoardings] = useState<Boarding[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [total, setTotal] = useState(0);
   const { filters, sortOption, setSortOption, clearFilters } = useBoardingStore();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sortParams = useMemo(() => {
+    if (sortOption === 'PRICE_ASC') return { sortBy: 'monthlyRent' as const, sortDir: 'asc' as const };
+    if (sortOption === 'PRICE_DESC') return { sortBy: 'monthlyRent' as const, sortDir: 'desc' as const };
+    if (sortOption === 'NEWEST') return { sortBy: 'createdAt' as const, sortDir: 'desc' as const };
+    return {};
+  }, [sortOption]);
+
+  const fetchBoardings = async (refresh = false) => {
+    if (refresh) setIsRefreshing(true);
+    else setIsLoading(true);
+    try {
+      const result = await searchBoardings({
+        search: query || undefined,
+        city: filters.city,
+        district: filters.district,
+        minRent: filters.minRent,
+        maxRent: filters.maxRent,
+        boardingType: filters.boardingType,
+        genderPref: filters.genderPref,
+        amenities: filters.amenities,
+        nearUniversity: filters.nearUniversity,
+        size: 50,
+        ...sortParams,
+      });
+      setBoardings(result.data.boarding);
+      setTotal(result.data.pagination.total);
+    } catch {
+      setBoardings([]);
+      setTotal(0);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  // Debounce query changes; immediate fetch on filter/sort changes
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { fetchBoardings(); }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, filters, sortParams]);
 
   const activeFilterChips = useMemo(() => {
     const chips: { key: string; label: string }[] = [];
@@ -126,29 +177,6 @@ export default function ExploreScreen() {
     if (filters.genderPref) chips.push({ key: 'genderPref', label: filters.genderPref });
     return chips;
   }, [filters]);
-
-  const filteredData = useMemo(() => {
-    let data = SAMPLE_BOARDINGS.filter((b) => b.status === 'ACTIVE');
-    if (query) {
-      data = data.filter(
-        (b) =>
-          b.title.toLowerCase().includes(query.toLowerCase()) ||
-          b.city.toLowerCase().includes(query.toLowerCase()) ||
-          b.district.toLowerCase().includes(query.toLowerCase()),
-      );
-    }
-    if (filters.district) data = data.filter((b) => b.district === filters.district);
-    if (filters.city) data = data.filter((b) => b.city === filters.city);
-    if (filters.minRent) data = data.filter((b) => b.monthlyRent >= (filters.minRent ?? 0));
-    if (filters.maxRent) data = data.filter((b) => b.monthlyRent <= (filters.maxRent ?? Infinity));
-    if (filters.genderPref) data = data.filter((b) => b.genderPref === filters.genderPref);
-
-    if (sortOption === 'PRICE_ASC') data = [...data].sort((a, b) => a.monthlyRent - b.monthlyRent);
-    else if (sortOption === 'PRICE_DESC') data = [...data].sort((a, b) => b.monthlyRent - a.monthlyRent);
-    else if (sortOption === 'NEWEST') data = [...data].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
-    return data;
-  }, [query, filters, sortOption]);
 
   const removeFilter = (key: string) => {
     const newFilters = { ...filters };
@@ -209,7 +237,9 @@ export default function ExploreScreen() {
 
         {/* Sort + count row */}
         <View style={styles.sortRow}>
-          <Text style={styles.resultCount}>{filteredData.length} boardings found</Text>
+          <Text style={styles.resultCount}>
+            {isLoading ? 'Searching…' : `${total} boarding${total !== 1 ? 's' : ''} found`}
+          </Text>
           <View>
             <TouchableOpacity
               style={styles.sortBtn}
@@ -241,27 +271,41 @@ export default function ExploreScreen() {
         </View>
       </View>
 
-      <FlatList
-        data={filteredData}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        onScrollBeginDrag={() => setShowSortMenu(false)}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={56} color={COLORS.grayBorder} />
-            <Text style={styles.emptyTitle}>No boardings found</Text>
-            <Text style={styles.emptySubtitle}>Try adjusting your search or filters</Text>
-          </View>
-        }
-      />
+      {isLoading && !isRefreshing ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={boardings}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={() => setShowSortMenu(false)}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={() => fetchBoardings(true)}
+              tintColor={COLORS.primary}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={56} color={COLORS.grayBorder} />
+              <Text style={styles.emptyTitle}>No boardings found</Text>
+              <Text style={styles.emptySubtitle}>Try adjusting your search or filters</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   // Search header
   searchHeader: {

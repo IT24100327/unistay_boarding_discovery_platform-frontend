@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Callout, UrlTile } from 'react-native-maps';
-import { SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { searchBoardings } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
 
@@ -26,14 +26,21 @@ const INITIAL_REGION = {
 export default function MapViewScreen() {
   const [selected, setSelected] = useState<Boarding | null>(null);
   const [query, setQuery] = useState('');
+  const [allBoardings, setAllBoardings] = useState<Boarding[]>([]);
+
+  useEffect(() => {
+    searchBoardings({ size: 100 })
+      .then((r) => setAllBoardings(r.data.boarding))
+      .catch(() => {});
+  }, []);
 
   const filtered = query
-    ? SAMPLE_BOARDINGS.filter(
+    ? allBoardings.filter(
         (b) =>
           b.title.toLowerCase().includes(query.toLowerCase()) ||
           b.city.toLowerCase().includes(query.toLowerCase()),
       )
-    : SAMPLE_BOARDINGS;
+    : allBoardings;
 
   return (
     <SafeAreaView style={styles.container}>

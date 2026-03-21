@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,16 @@ import {
   Image,
   Dimensions,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
-import { SAMPLE_BOARDINGS, SAMPLE_REVIEWS } from '@/store/boarding.store';
+import { getBoardingBySlug, getBoardingReviews } from '@/lib/boarding';
 import { useSaveBoarding } from '@/hooks/useSaveBoarding';
 import { COLORS } from '@/lib/constants';
+import type { Boarding, BoardingReview } from '@/types/boarding.types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MAX_DESCRIPTION_PREVIEW_LENGTH = 120;
@@ -61,14 +63,51 @@ export default function BoardingDetailsScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { user } = useAuthStore();
 
-  const boarding = SAMPLE_BOARDINGS.find((b) => b.slug === slug || b.id === slug) ?? SAMPLE_BOARDINGS[0];
-  const { saved, toggleSave } = useSaveBoarding(boarding.id);
-  const isOwner = user?.role === 'OWNER';
-  const isOwnListing = isOwner && boarding.owner.id === 'o1';
+  const [boarding, setBoarding] = useState<Boarding | null>(null);
+  const [reviews, setReviews] = useState<BoardingReview[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [descExpanded, setDescExpanded] = useState(false);
 
-  const isAvailable = boarding.currentOccupants < boarding.maxOccupants;
+  const { saved, toggleSave } = useSaveBoarding(boarding?.id ?? '');
+  const isOwner = user?.role === 'OWNER';
+  const isOwnListing = isOwner && boarding !== null && boarding.ownerId === user?.id;
+  const isAvailable = boarding !== null && boarding.currentOccupants < boarding.maxOccupants;
+
+  useEffect(() => {
+    if (!slug) return;
+    setIsLoading(true);
+    Promise.all([
+      getBoardingBySlug(slug).then((r) => setBoarding(r.data.boarding)),
+      getBoardingReviews(slug).then((r) => setReviews(r.data.reviews)).catch(() => setReviews([])),
+    ])
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [slug]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!boarding) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={COLORS.gray} />
+          <Text style={styles.notFoundText}>Boarding not found</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.goBackBtn}>
+            <Text style={styles.goBackBtnText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -249,7 +288,7 @@ export default function BoardingDetailsScreen() {
           <View style={styles.reviewsHeader}>
             <Text style={styles.sectionTitle}>Reviews</Text>
           </View>
-          {SAMPLE_REVIEWS.slice(0, 2).map((review) => (
+          {reviews.slice(0, 2).map((review) => (
             <View key={review.id} style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
                 <View style={styles.reviewAvatar}>
@@ -284,7 +323,7 @@ export default function BoardingDetailsScreen() {
           <>
             <TouchableOpacity
               style={[styles.footerBtn, styles.footerBtnSecondary]}
-              onPress={() => router.push(`/my-listings/1/analytics` as never)}
+              onPress={() => router.push(`/my-listings/${boarding.id}/analytics` as never)}
             >
               <Text style={styles.footerBtnSecondaryText}>View Analytics</Text>
             </TouchableOpacity>
@@ -314,6 +353,10 @@ export default function BoardingDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  notFoundText: { fontSize: 16, color: COLORS.textSecondary, fontWeight: '600' },
+  goBackBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: COLORS.primary, borderRadius: 10 },
+  goBackBtnText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
 
   // Carousel
   carouselContainer: { position: 'relative' },

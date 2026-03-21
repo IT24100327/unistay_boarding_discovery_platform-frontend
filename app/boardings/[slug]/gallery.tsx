@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,50 @@ import {
   Dimensions,
   TouchableOpacity,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SAMPLE_BOARDINGS } from '@/store/boarding.store';
+import { getBoardingBySlug } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
+import type { Boarding } from '@/types/boarding.types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function GalleryScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const boarding = SAMPLE_BOARDINGS.find((b) => b.slug === slug || b.id === slug) ?? SAMPLE_BOARDINGS[0];
+  const [boarding, setBoarding] = useState<Boarding | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    if (!slug) return;
+    getBoardingBySlug(slug)
+      .then((r) => setBoarding(r.data.boarding))
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [slug]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.white} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!boarding) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={COLORS.gray} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -85,6 +116,7 @@ export default function GalleryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
+  ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
-import { SAMPLE_BOARDINGS } from '@/store/boarding.store';
 import { useSaveBoarding } from '@/hooks/useSaveBoarding';
+import { searchBoardings, getMyListings } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
 
@@ -72,8 +73,16 @@ function BoardingCard({ item, showOccupancy }: { item: Boarding; showOccupancy?:
 
 // ─── Student View ──────────────────────────────────────────────────────────────
 function StudentHome({ firstName }: { firstName: string }) {
-  const recommended = SAMPLE_BOARDINGS.slice(0, 4);
-  const recentlyViewed = SAMPLE_BOARDINGS.slice(1, 4);
+  const [recommended, setRecommended] = useState<Boarding[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    searchBoardings({ size: 4 })
+      .then((r) => setRecommended(r.data.boarding))
+      .catch(() => setRecommended([]))
+      .finally(() => setIsLoading(false));
+  }, []);
+
   const marketplaceItems = [
     { id: 'm1', name: 'Calculus Textbook', price: 'LKR 800', emoji: '📚' },
     { id: 'm2', name: 'Mini Fridge', price: 'LKR 6,500', emoji: '🧊' },
@@ -141,30 +150,25 @@ function StudentHome({ firstName }: { firstName: string }) {
           <Text style={styles.viewAll}>See all</Text>
         </TouchableOpacity>
       </View>
-      <FlatList
-        data={recommended}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.horizontalList}
-        renderItem={({ item }) => <BoardingCard item={item} />}
-      />
-
-      {/* Recently Viewed */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recently Viewed</Text>
-        <TouchableOpacity>
-          <Text style={styles.viewAll}>Clear</Text>
-        </TouchableOpacity>
-      </View>
-      <FlatList
-        data={recentlyViewed}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.horizontalList}
-        renderItem={({ item }) => <BoardingCard item={item} />}
-      />
+      {isLoading ? (
+        <View style={styles.sectionLoader}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={recommended}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.horizontalList}
+          renderItem={({ item }) => <BoardingCard item={item} />}
+          ListEmptyComponent={
+            <View style={styles.horizontalEmpty}>
+              <Text style={styles.horizontalEmptyText}>No boardings available right now</Text>
+            </View>
+          }
+        />
+      )}
 
       {/* Marketplace Highlights */}
       <View style={styles.sectionHeader}>
@@ -200,7 +204,15 @@ function StudentHome({ firstName }: { firstName: string }) {
 
 // ─── Owner View ────────────────────────────────────────────────────────────────
 function OwnerHome({ firstName }: { firstName: string }) {
-  const ownerListings = SAMPLE_BOARDINGS.filter((b) => b.owner.id === 'o1');
+  const [ownerListings, setOwnerListings] = useState<Boarding[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useFocusEffect(useCallback(() => {
+    getMyListings()
+      .then((r) => setOwnerListings(r.data.boardings))
+      .catch(() => setOwnerListings([]))
+      .finally(() => setIsLoading(false));
+  }, []));
 
   const recentActivity = [
     { id: 'a1', icon: 'calendar-outline' as const, text: 'New reservation request for The Hub', time: '2h ago' },
@@ -231,7 +243,7 @@ function OwnerHome({ firstName }: { firstName: string }) {
           onPress={() => router.push('/my-listings' as never)}
         >
           <Ionicons name="home-outline" size={22} color={COLORS.primary} />
-          <Text style={styles.ownerStatValue}>4</Text>
+          <Text style={styles.ownerStatValue}>{ownerListings.length}</Text>
           <Text style={styles.ownerStatLabel}>Total Listings</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.ownerStatCard, { backgroundColor: '#FEF3C7' }]}>
@@ -258,23 +270,29 @@ function OwnerHome({ firstName }: { firstName: string }) {
           <Text style={styles.viewAll}>Manage</Text>
         </TouchableOpacity>
       </View>
-      <FlatList
-        data={ownerListings}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.horizontalList}
-        renderItem={({ item }) => <BoardingCard item={item} showOccupancy />}
-        ListEmptyComponent={
-          <TouchableOpacity
-            style={styles.emptyListingCard}
-            onPress={() => router.push('/boardings/create/step1' as never)}
-          >
-            <Ionicons name="add-circle-outline" size={32} color={COLORS.primary} />
-            <Text style={styles.emptyListingText}>Create your first listing</Text>
-          </TouchableOpacity>
-        }
-      />
+      {isLoading ? (
+        <View style={styles.sectionLoader}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={ownerListings}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.horizontalList}
+          renderItem={({ item }) => <BoardingCard item={item} showOccupancy />}
+          ListEmptyComponent={
+            <TouchableOpacity
+              style={styles.emptyListingCard}
+              onPress={() => router.push('/boardings/create/step1' as never)}
+            >
+              <Ionicons name="add-circle-outline" size={32} color={COLORS.primary} />
+              <Text style={styles.emptyListingText}>Create your first listing</Text>
+            </TouchableOpacity>
+          }
+        />
+      )}
 
       {/* Recent Activity */}
       <View style={styles.sectionHeader}>
@@ -405,6 +423,9 @@ const styles = StyleSheet.create({
 
   // Horizontal list
   horizontalList: { paddingHorizontal: 20, paddingBottom: 4 },
+  sectionLoader: { height: 160, alignItems: 'center', justifyContent: 'center' },
+  horizontalEmpty: { paddingHorizontal: 20, paddingVertical: 40 },
+  horizontalEmptyText: { fontSize: 14, color: COLORS.textSecondary },
 
   // Boarding Card
   boardingCard: {
