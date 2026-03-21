@@ -83,12 +83,6 @@ function StudentHome({ firstName }: { firstName: string }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const marketplaceItems = [
-    { id: 'm1', name: 'Calculus Textbook', price: 'LKR 800', emoji: '📚' },
-    { id: 'm2', name: 'Mini Fridge', price: 'LKR 6,500', emoji: '🧊' },
-    { id: 'm3', name: 'Study Desk Lamp', price: 'LKR 1,200', emoji: '💡' },
-  ];
-
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       {/* Header */}
@@ -115,33 +109,6 @@ function StudentHome({ firstName }: { firstName: string }) {
         <Text style={styles.searchPlaceholder}>Search boardings...</Text>
         <Ionicons name="options-outline" size={18} color={COLORS.gray} />
       </TouchableOpacity>
-
-      {/* Quick Stats */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.statsRow}
-        contentContainerStyle={styles.statsRowContent}
-      >
-        <TouchableOpacity style={[styles.statCard, { backgroundColor: COLORS.primary }]}>
-          <Ionicons name="home" size={20} color={COLORS.white} />
-          <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.85)' }]}>Active Reservation</Text>
-          <Text style={[styles.statValue, { color: COLORS.white }]}>Room 302</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.statCard, { backgroundColor: '#FEF3C7' }]}>
-          <Ionicons name="card-outline" size={20} color={COLORS.orange} />
-          <Text style={[styles.statLabel, { color: COLORS.orange }]}>Payment Due</Text>
-          <Text style={[styles.statValue, { color: COLORS.text }]}>5 days</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.statCard, { backgroundColor: '#EBF0FF' }]}
-          onPress={() => router.push('/(tabs)/messages' as never)}
-        >
-          <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
-          <Text style={[styles.statLabel, { color: COLORS.primary }]}>Unread Messages</Text>
-          <Text style={[styles.statValue, { color: COLORS.text }]}>3</Text>
-        </TouchableOpacity>
-      </ScrollView>
 
       {/* Recommended for You */}
       <View style={styles.sectionHeader}>
@@ -170,23 +137,6 @@ function StudentHome({ firstName }: { firstName: string }) {
         />
       )}
 
-      {/* Marketplace Highlights */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Marketplace Highlights</Text>
-        <TouchableOpacity>
-          <Text style={styles.viewAll}>View all</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.marketplaceRow}>
-        {marketplaceItems.map((item) => (
-          <TouchableOpacity key={item.id} style={styles.marketItem} activeOpacity={0.8}>
-            <Text style={styles.marketEmoji}>{item.emoji}</Text>
-            <Text style={styles.marketName} numberOfLines={1}>{item.name}</Text>
-            <Text style={styles.marketPrice}>{item.price}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       {/* Bottom CTA */}
       <TouchableOpacity
         style={styles.exploreBtn}
@@ -214,12 +164,6 @@ function OwnerHome({ firstName }: { firstName: string }) {
       .finally(() => setIsLoading(false));
   }, []));
 
-  const recentActivity = [
-    { id: 'a1', icon: 'calendar-outline' as const, text: 'New reservation request for The Hub', time: '2h ago' },
-    { id: 'a2', icon: 'checkmark-circle-outline' as const, text: 'Payment confirmed – Room 302', time: '1d ago' },
-    { id: 'a3', icon: 'person-add-outline' as const, text: 'New inquiry from Dilshan K.', time: '2d ago' },
-  ];
-
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       {/* Header */}
@@ -239,27 +183,12 @@ function OwnerHome({ firstName }: { firstName: string }) {
       {/* Quick Stats */}
       <View style={styles.ownerStatsGrid}>
         <TouchableOpacity
-          style={[styles.ownerStatCard, { backgroundColor: '#EBF0FF' }]}
+          style={[styles.ownerStatCard, { backgroundColor: '#EBF0FF', width: '100%' }]}
           onPress={() => router.push('/my-listings' as never)}
         >
           <Ionicons name="home-outline" size={22} color={COLORS.primary} />
           <Text style={styles.ownerStatValue}>{ownerListings.length}</Text>
           <Text style={styles.ownerStatLabel}>Total Listings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.ownerStatCard, { backgroundColor: '#FEF3C7' }]}>
-          <Ionicons name="time-outline" size={22} color={COLORS.orange} />
-          <Text style={styles.ownerStatValue}>2</Text>
-          <Text style={styles.ownerStatLabel}>Pending Requests</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.ownerStatCard, { backgroundColor: '#FEE2E2' }]}>
-          <Ionicons name="card-outline" size={22} color={COLORS.red} />
-          <Text style={styles.ownerStatValue}>1</Text>
-          <Text style={styles.ownerStatLabel}>Pending Payments</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.ownerStatCard, { backgroundColor: '#D1FAE5' }]}>
-          <Ionicons name="trending-up-outline" size={22} color={COLORS.green} />
-          <Text style={styles.ownerStatValue}>LKR 45K</Text>
-          <Text style={styles.ownerStatLabel}>This Month</Text>
         </TouchableOpacity>
       </View>
 
@@ -293,27 +222,6 @@ function OwnerHome({ firstName }: { firstName: string }) {
           }
         />
       )}
-
-      {/* Recent Activity */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
-        <TouchableOpacity>
-          <Text style={styles.viewAll}>View all</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.activityList}>
-        {recentActivity.map((item) => (
-          <View key={item.id} style={styles.activityItem}>
-            <View style={styles.activityIcon}>
-              <Ionicons name={item.icon} size={18} color={COLORS.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.activityText}>{item.text}</Text>
-              <Text style={styles.activityTime}>{item.time}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
 
       <View style={{ height: 100 }} />
     </ScrollView>
@@ -393,23 +301,6 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: { flex: 1, fontSize: 15, color: COLORS.textSecondary },
 
-  // Quick Stats (Student)
-  statsRow: { marginBottom: 20 },
-  statsRowContent: { paddingHorizontal: 20, gap: 12 },
-  statCard: {
-    borderRadius: 14,
-    padding: 14,
-    minWidth: 130,
-    gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  statLabel: { fontSize: 11, fontWeight: '500' },
-  statValue: { fontSize: 16, fontWeight: '700' },
-
   // Section header
   sectionHeader: {
     flexDirection: 'row',
@@ -474,24 +365,6 @@ const styles = StyleSheet.create({
   boardingFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   boardingPrice: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
 
-  // Marketplace
-  marketplaceRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 20 },
-  marketItem: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  marketEmoji: { fontSize: 24, marginBottom: 6 },
-  marketName: { fontSize: 11, fontWeight: '600', color: COLORS.text, textAlign: 'center' },
-  marketPrice: { fontSize: 12, fontWeight: '700', color: COLORS.primary, marginTop: 2 },
-
   // Explore CTA
   exploreBtn: {
     flexDirection: 'row',
@@ -544,32 +417,6 @@ const styles = StyleSheet.create({
     marginLeft: 20,
   },
   emptyListingText: { fontSize: 13, color: COLORS.primary, fontWeight: '600', textAlign: 'center', paddingHorizontal: 10 },
-
-  // Recent Activity
-  activityList: { paddingHorizontal: 20, gap: 8, marginBottom: 8 },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  activityIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#EBF0FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activityText: { fontSize: 13, fontWeight: '500', color: COLORS.text },
-  activityTime: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
 
   // FAB
   fab: {
