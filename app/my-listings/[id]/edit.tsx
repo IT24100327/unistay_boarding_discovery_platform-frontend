@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   getMyListings,
   updateBoarding,
+  deactivateBoarding,
   submitBoardingForApproval,
   uploadBoardingImages,
   deleteBoardingImage,
@@ -316,6 +317,12 @@ export default function EditBoardingScreen() {
 
     setIsSaving(true);
     try {
+      if (isLocked) {
+        console.log(`${LOG} Deactivating boarding before edit`, { boardingId: boarding.id });
+        await deactivateBoarding(boarding.id);
+        console.log(`${LOG} Deactivate success`);
+      }
+
       console.log(`${LOG} Calling updateBoarding`);
       const result = await updateBoarding(boarding.id, payload);
       const updatedId = result.data.boarding.id;
