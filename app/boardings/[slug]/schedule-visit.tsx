@@ -7,17 +7,15 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createVisitRequest } from '@/lib/visit';
 import { COLORS } from '@/lib/constants';
-import { TIMESLOT_LABELS } from '@/types/visit.types';
-import type { VisitTimeslot } from '@/types/visit.types';
 
-const TIMESLOTS = Object.entries(TIMESLOT_LABELS) as [VisitTimeslot, string][];
-
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 function getDaysFromToday(count: number): Date[] {
   const days: Date[] = [];
   const today = new Date();
@@ -36,6 +34,27 @@ const MONTH_NAMES = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
+/** Available start-hour options (24-h). Slots are 30 min; end = start + 30 min. */
+const HOUR_SLOTS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+
+function pad(n: number) {
+  return String(n).padStart(2, '0');
+}
+
+function formatHour(h: number) {
+  const suffix = h < 12 ? 'AM' : 'PM';
+  const display = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return `${display}:00 ${suffix}`;
+}
+
+/** Build an ISO-8601 datetime string for the given Date + hour (local TZ). */
+function buildISO(date: Date, hour: number): string {
+  const d = new Date(date);
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+}
+
+// ─── Screen ────────────────────────────────────────────────────────────────────
 export default function ScheduleVisitScreen() {
   const { slug, boardingId, boardingTitle } = useLocalSearchParams<{
     slug: string;
@@ -46,7 +65,8 @@ export default function ScheduleVisitScreen() {
   const availableDays = getDaysFromToday(14);
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTimeslot, setSelectedTimeslot] = useState<VisitTimeslot | null>(null);
+  const [selectedStartHour, setSelectedStartHour] = useState<number | null>(null);
+  const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatDateISO = (d: Date) => {
@@ -56,9 +76,11 @@ export default function ScheduleVisitScreen() {
     return `${year}-${month}-${day}`;
   };
 
+  const isReady = selectedDate !== null && selectedStartHour !== null;
+
   const handleSubmit = async () => {
-    if (!selectedDate || !selectedTimeslot) {
-      Alert.alert('Incomplete', 'Please select a date and a timeslot.');
+    if (!isReady) {
+      Alert.alert('Incomplete', 'Please select a date and time slot.');
       return;
     }
     if (!boardingId) {
@@ -69,8 +91,9 @@ export default function ScheduleVisitScreen() {
     try {
       await createVisitRequest({
         boardingId,
-        visitDate: formatDateISO(selectedDate),
-        timeslot: selectedTimeslot,
+        requestedStartAt: buildISO(selectedDate, selectedStartHour),
+        requestedEndAt: buildISO(selectedDate, selectedStartHour + 1),
+        ...(message.trim() ? { message: message.trim() } : {}),
       });
       Alert.alert(
         'Visit Requested!',
@@ -78,10 +101,10 @@ export default function ScheduleVisitScreen() {
         [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch (err: unknown) {
-      const message =
+      const apiMessage =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         'Failed to submit visit request. Please try again.';
-      Alert.alert('Error', message);
+      Alert.alert('Error', apiMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -111,8 +134,9 @@ export default function ScheduleVisitScreen() {
         <View style={styles.noticeCard}>
           <Ionicons name="information-circle-outline" size={18} color={COLORS.primary} />
           <Text style={styles.noticeText}>
-            Your request will be <Text style={styles.noticeBold}>PENDING</Text> until the owner reviews it.
-            It expires automatically in <Text style={styles.noticeBold}>72 hours</Text> if not acted upon.
+            Your request will be <Text style={styles.noticeBold}>PENDING</Text> until the owner
+            reviews it. It expires automatically in{' '}
+            <Text style={styles.noticeBold}>72 hours</Text> if not acted upon.
           </Text>
         </View>
 
@@ -146,27 +170,41 @@ export default function ScheduleVisitScreen() {
           })}
         </ScrollView>
 
-        {/* Timeslot picker */}
-        <Text style={styles.sectionTitle}>Select Timeslot</Text>
+        {/* Time slot picker */}
+        <Text style={styles.sectionTitle}>Select Start Time (1-hour visit)</Text>
         <View style={styles.timeslotGrid}>
-          {TIMESLOTS.map(([key, label]) => {
-            const isSelected = selectedTimeslot === key;
+          {HOUR_SLOTS.map((h) => {
+            const isSelected = selectedStartHour === h;
             return (
               <TouchableOpacity
-                key={key}
+                key={h}
                 style={[styles.timeslotCard, isSelected && styles.timeslotCardSelected]}
-                onPress={() => setSelectedTimeslot(key)}
+                onPress={() => setSelectedStartHour(h)}
               >
                 <Text style={[styles.timeslotText, isSelected && styles.timeslotTextSelected]}>
-                  {label}
+                  {formatHour(h)}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
+        {/* Optional message */}
+        <Text style={styles.sectionTitle}>Message to Owner (optional)</Text>
+        <TextInput
+          style={styles.messageInput}
+          placeholder="E.g. Can I inspect the room and washroom?"
+          placeholderTextColor={COLORS.gray}
+          value={message}
+          onChangeText={setMessage}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+          maxLength={1000}
+        />
+
         {/* Summary */}
-        {selectedDate && selectedTimeslot && (
+        {selectedDate && selectedStartHour !== null && (
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>Visit Summary</Text>
             <View style={styles.summaryRow}>
@@ -178,7 +216,9 @@ export default function ScheduleVisitScreen() {
             </View>
             <View style={styles.summaryRow}>
               <Ionicons name="time-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.summaryText}>{TIMESLOT_LABELS[selectedTimeslot]}</Text>
+              <Text style={styles.summaryText}>
+                {formatHour(selectedStartHour)} – {formatHour(selectedStartHour + 1)}
+              </Text>
             </View>
           </View>
         )}
@@ -191,10 +231,10 @@ export default function ScheduleVisitScreen() {
         <TouchableOpacity
           style={[
             styles.submitBtn,
-            (!selectedDate || !selectedTimeslot || isSubmitting) && styles.submitBtnDisabled,
+            (!isReady || isSubmitting) && styles.submitBtnDisabled,
           ]}
           onPress={handleSubmit}
-          disabled={!selectedDate || !selectedTimeslot || isSubmitting}
+          disabled={!isReady || isSubmitting}
         >
           {isSubmitting ? (
             <ActivityIndicator color={COLORS.white} />
@@ -296,6 +336,18 @@ const styles = StyleSheet.create({
   timeslotText: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary },
   timeslotTextSelected: { color: COLORS.white },
 
+  messageInput: {
+    borderWidth: 1,
+    borderColor: COLORS.grayBorder,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: COLORS.text,
+    minHeight: 80,
+    marginBottom: 20,
+    backgroundColor: COLORS.white,
+  },
+
   summaryCard: {
     backgroundColor: COLORS.white,
     borderRadius: 14,
@@ -330,3 +382,4 @@ const styles = StyleSheet.create({
   submitBtnDisabled: { backgroundColor: COLORS.grayBorder },
   submitBtnText: { fontSize: 16, fontWeight: '700', color: COLORS.white },
 });
+

@@ -22,6 +22,7 @@ const STATUS_COLORS: Record<VisitStatus, string> = {
   PENDING: '#FEF3C7',
   APPROVED: '#D1FAE5',
   REJECTED: '#FEE2E2',
+  CANCELLED: '#F3F4F6',
   EXPIRED: '#F3F4F6',
 };
 
@@ -29,6 +30,7 @@ const STATUS_TEXT_COLORS: Record<VisitStatus, string> = {
   PENDING: COLORS.orange,
   APPROVED: COLORS.green,
   REJECTED: COLORS.red,
+  CANCELLED: COLORS.textSecondary,
   EXPIRED: COLORS.textSecondary,
 };
 

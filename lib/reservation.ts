@@ -1,4 +1,4 @@
-import api from './api';
+import reservationApi from './reservation-api';
 import type { UniStayApiResponse } from '@/types/api.types';
 import type {
   Reservation,
@@ -8,66 +8,67 @@ import type {
 } from '@/types/reservation.types';
 
 export async function createReservation(payload: CreateReservationPayload) {
-  const response = await api.post<UniStayApiResponse<{ reservation: Reservation }>>(
-    '/reservations',
+  const response = await reservationApi.post<UniStayApiResponse<{ reservation: Reservation }>>(
+    '/reservation',
     payload,
   );
   return response.data;
 }
 
 export async function getMyReservations() {
-  const response = await api.get<UniStayApiResponse<{ reservations: Reservation[] }>>(
-    '/reservations/my',
-  );
-  return response.data;
-}
-
-export async function getMyActiveReservation() {
-  const response = await api.get<UniStayApiResponse<{ reservation: Reservation | null }>>(
-    '/reservations/my/active',
+  const response = await reservationApi.get<UniStayApiResponse<{ reservations: Reservation[] }>>(
+    '/reservation/my-requests',
   );
   return response.data;
 }
 
 export async function getReceivedReservations() {
-  const response = await api.get<UniStayApiResponse<{ reservations: Reservation[] }>>(
-    '/reservations/received',
+  const response = await reservationApi.get<UniStayApiResponse<{ reservations: Reservation[] }>>(
+    '/reservation/my-boardings',
   );
   return response.data;
 }
 
 export async function getReservationById(id: string) {
-  const response = await api.get<UniStayApiResponse<{ reservation: Reservation }>>(
-    `/reservations/${id}`,
+  const response = await reservationApi.get<UniStayApiResponse<{ reservation: Reservation }>>(
+    `/reservation/${id}`,
   );
   return response.data;
 }
 
 export async function getRentalPeriods(reservationId: string) {
-  const response = await api.get<UniStayApiResponse<{ rentalPeriods: RentalPeriod[] }>>(
-    `/reservations/${reservationId}/rental-periods`,
+  const response = await reservationApi.get<UniStayApiResponse<{ rentalPeriods: RentalPeriod[] }>>(
+    `/reservation/${reservationId}/rental-periods`,
   );
   return response.data;
 }
 
 export async function approveReservation(id: string) {
-  const response = await api.patch<UniStayApiResponse<{ reservation: Reservation }>>(
-    `/reservations/${id}/approve`,
+  const response = await reservationApi.patch<UniStayApiResponse<{ reservation: Reservation }>>(
+    `/reservation/${id}/approve`,
   );
   return response.data;
 }
 
 export async function rejectReservation(id: string, payload: RejectReservationPayload) {
-  const response = await api.patch<UniStayApiResponse<{ reservation: Reservation }>>(
-    `/reservations/${id}/reject`,
+  const response = await reservationApi.patch<UniStayApiResponse<{ reservation: Reservation }>>(
+    `/reservation/${id}/reject`,
     payload,
   );
   return response.data;
 }
 
-export async function completeReservation(id: string) {
-  const response = await api.patch<UniStayApiResponse<{ reservation: Reservation }>>(
-    `/reservations/${id}/complete`,
+export async function cancelReservation(id: string) {
+  const response = await reservationApi.patch<UniStayApiResponse<{ reservation: Reservation }>>(
+    `/reservation/${id}/cancel`,
   );
   return response.data;
 }
+
+export async function completeReservation(id: string) {
+  const response = await reservationApi.patch<UniStayApiResponse<{ reservation: Reservation }>>(
+    `/reservation/${id}/complete`,
+  );
+  return response.data;
+}
+

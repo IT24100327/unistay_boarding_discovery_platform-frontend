@@ -11,15 +11,15 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getMyVisitRequests } from '@/lib/visit';
+import { getMyVisitRequests, cancelVisitRequest } from '@/lib/visit';
 import { COLORS } from '@/lib/constants';
-import { TIMESLOT_LABELS } from '@/types/visit.types';
 import type { VisitRequest, VisitStatus } from '@/types/visit.types';
 
 const STATUS_COLORS: Record<VisitStatus, string> = {
   PENDING: '#FEF3C7',
   APPROVED: '#D1FAE5',
   REJECTED: '#FEE2E2',
+  CANCELLED: '#F3F4F6',
   EXPIRED: '#F3F4F6',
 };
 
@@ -27,6 +27,7 @@ const STATUS_TEXT_COLORS: Record<VisitStatus, string> = {
   PENDING: COLORS.orange,
   APPROVED: COLORS.green,
   REJECTED: COLORS.red,
+  CANCELLED: COLORS.textSecondary,
   EXPIRED: COLORS.textSecondary,
 };
 
@@ -35,14 +36,28 @@ const MONTH_NAMES = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-function formatDate(iso: string) {
+function formatDateTime(iso: string) {
   const d = new Date(iso);
-  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  const date = `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  const hours = d.getHours();
+  const suffix = hours < 12 ? 'AM' : 'PM';
+  const display = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+  const time = `${display}:${String(d.getMinutes()).padStart(2, '0')} ${suffix}`;
+  return `${date}, ${time}`;
+}
+
+function formatTime(iso: string) {
+  const d = new Date(iso);
+  const hours = d.getHours();
+  const suffix = hours < 12 ? 'AM' : 'PM';
+  const display = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+  return `${display}:${String(d.getMinutes()).padStart(2, '0')} ${suffix}`;
 }
 
 export default function MyVisitsScreen() {
   const [visits, setVisits] = useState<VisitRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const loadVisits = useCallback(async () => {
     setIsLoading(true);
@@ -57,6 +72,36 @@ export default function MyVisitsScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { loadVisits(); }, [loadVisits]));
+
+  const handleCancel = (id: string) => {
+    Alert.alert(
+      'Cancel Visit Request',
+      'Are you sure you want to cancel this visit request?',
+      [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Cancel Request',
+          style: 'destructive',
+          onPress: async () => {
+            setCancellingId(id);
+            try {
+              const result = await cancelVisitRequest(id);
+              setVisits((prev) =>
+                prev.map((v) => (v.id === id ? result.data.visitRequest : v)),
+              );
+            } catch (err: unknown) {
+              const message =
+                (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+                'Failed to cancel visit request.';
+              Alert.alert('Error', message);
+            } finally {
+              setCancellingId(null);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const renderItem = ({ item }: { item: VisitRequest }) => (
     <View style={styles.card}>
@@ -80,17 +125,21 @@ export default function MyVisitsScreen() {
       <View style={styles.cardBody}>
         <View style={styles.infoRow}>
           <Ionicons name="calendar-outline" size={15} color={COLORS.primary} />
-          <Text style={styles.infoText}>Visit Date: {formatDate(item.visitDate)}</Text>
+          <Text style={styles.infoText}>
+            {formatDateTime(item.requestedStartAt)} – {formatTime(item.requestedEndAt)}
+          </Text>
         </View>
-        <View style={styles.infoRow}>
-          <Ionicons name="time-outline" size={15} color={COLORS.primary} />
-          <Text style={styles.infoText}>{TIMESLOT_LABELS[item.timeslot]}</Text>
-        </View>
+        {item.message ? (
+          <View style={styles.infoRow}>
+            <Ionicons name="chatbubble-outline" size={15} color={COLORS.primary} />
+            <Text style={styles.infoText} numberOfLines={2}>{item.message}</Text>
+          </View>
+        ) : null}
         {item.status === 'PENDING' && (
           <View style={styles.infoRow}>
             <Ionicons name="hourglass-outline" size={15} color={COLORS.orange} />
             <Text style={[styles.infoText, { color: COLORS.orange }]}>
-              Expires: {formatDate(item.expiresAt)}
+              Expires: {formatDateTime(item.expiresAt)}
             </Text>
           </View>
         )}
@@ -101,6 +150,20 @@ export default function MyVisitsScreen() {
           </View>
         )}
       </View>
+
+      {(item.status === 'PENDING' || item.status === 'APPROVED') && (
+        <TouchableOpacity
+          style={styles.cancelBtn}
+          onPress={() => handleCancel(item.id)}
+          disabled={cancellingId === item.id}
+        >
+          {cancellingId === item.id ? (
+            <ActivityIndicator size="small" color={COLORS.red} />
+          ) : (
+            <Text style={styles.cancelBtnText}>Cancel Request</Text>
+          )}
+        </TouchableOpacity>
+      )}
 
       {item.status === 'APPROVED' && (
         <TouchableOpacity
@@ -207,7 +270,7 @@ const styles = StyleSheet.create({
 
   cardBody: { padding: 14, gap: 8 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  infoText: { fontSize: 13, color: COLORS.textSecondary },
+  infoText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
 
   rejectionCard: {
     backgroundColor: '#FFF1F0',
@@ -219,6 +282,15 @@ const styles = StyleSheet.create({
   },
   rejectionLabel: { fontSize: 11, fontWeight: '700', color: COLORS.red, marginBottom: 2 },
   rejectionText: { fontSize: 13, color: COLORS.text },
+
+  cancelBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.grayLight,
+  },
+  cancelBtnText: { fontSize: 13, color: COLORS.red, fontWeight: '600' },
 
   viewBtn: {
     flexDirection: 'row',
@@ -243,3 +315,4 @@ const styles = StyleSheet.create({
   },
   browseBtnText: { fontSize: 14, fontWeight: '700', color: COLORS.white },
 });
+

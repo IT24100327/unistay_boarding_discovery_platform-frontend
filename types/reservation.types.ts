@@ -1,6 +1,26 @@
-export type ReservationStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'COMPLETED';
+export type ReservationStatus =
+  | 'PENDING'
+  | 'ACTIVE'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'REJECTED'
+  | 'EXPIRED';
 
-export type RentalPeriodStatus = 'UPCOMING' | 'DUE' | 'PAID' | 'OVERDUE';
+export type RentalPeriodStatus = 'UPCOMING' | 'DUE' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE';
+
+export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'ONLINE';
+
+export type PaymentStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
+
+export interface Payment {
+  id: string;
+  /** Prisma Decimal serialised as string */
+  amount: string;
+  paymentMethod: PaymentMethod;
+  status: PaymentStatus;
+  paidAt: string | null;
+  confirmedAt: string | null;
+}
 
 export interface ReservationBoardingInfo {
   id: string;
@@ -23,13 +43,14 @@ export interface ReservationStudentInfo {
 export interface RentalPeriod {
   id: string;
   reservationId: string;
-  periodNumber: number;
+  /** e.g. "2026-04" */
+  periodLabel: string;
   dueDate: string;
-  paidDate: string | null;
-  amount: number;
+  amountDue: number;
   status: RentalPeriodStatus;
   createdAt: string;
   updatedAt: string;
+  payments: Payment[];
 }
 
 export interface Reservation {
@@ -37,6 +58,7 @@ export interface Reservation {
   boardingId: string;
   studentId: string;
   moveInDate: string;
+  specialRequests?: string | null;
   status: ReservationStatus;
   rejectionReason: string | null;
   createdAt: string;
@@ -49,8 +71,10 @@ export interface Reservation {
 export interface CreateReservationPayload {
   boardingId: string;
   moveInDate: string;
+  specialRequests?: string;
 }
 
 export interface RejectReservationPayload {
-  rejectionReason: string;
+  reason: string;
 }
+

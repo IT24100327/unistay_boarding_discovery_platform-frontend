@@ -20,6 +20,9 @@ export const COLORS = {
 
 export const API_URL = 'http://localhost:5000/api';
 
+// Reservation & Visit-Request service (separate backend on port 3000)
+export const RESERVATION_API_URL = 'http://localhost:3000/api';
+
 export const STORAGE_KEYS = {
   TOKEN: 'uniboard_token',
   REFRESH_TOKEN: 'uniboard_refresh_token',

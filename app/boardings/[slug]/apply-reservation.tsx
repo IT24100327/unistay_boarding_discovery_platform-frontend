@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +43,7 @@ export default function ApplyReservationScreen() {
   const availableDays = getDaysFromToday(60);
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [specialRequests, setSpecialRequests] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const rentAmount = monthlyRent ? Number(monthlyRent) : null;
@@ -67,6 +69,7 @@ export default function ApplyReservationScreen() {
       await createReservation({
         boardingId,
         moveInDate: formatDateISO(selectedDate),
+        ...(specialRequests.trim() ? { specialRequests: specialRequests.trim() } : {}),
       });
       Alert.alert(
         'Application Submitted!',
@@ -159,6 +162,20 @@ export default function ApplyReservationScreen() {
             </View>
           </View>
         ))}
+
+        {/* Special requests */}
+        <Text style={styles.sectionTitle}>Special Requests (optional)</Text>
+        <TextInput
+          style={styles.messageInput}
+          placeholder="E.g. Need a quiet room near study area"
+          placeholderTextColor={COLORS.gray}
+          value={specialRequests}
+          onChangeText={setSpecialRequests}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+          maxLength={1000}
+        />
 
         {/* Summary */}
         {selectedDate && (
@@ -268,6 +285,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 12,
+  },
+
+  messageInput: {
+    borderWidth: 1,
+    borderColor: COLORS.grayBorder,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: COLORS.text,
+    minHeight: 80,
+    marginBottom: 20,
+    backgroundColor: COLORS.white,
   },
 
   monthLabel: {

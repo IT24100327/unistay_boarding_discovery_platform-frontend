@@ -11,7 +11,7 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getMyReservations, getRentalPeriods } from '@/lib/reservation';
+import { getMyReservations, getRentalPeriods, cancelReservation } from '@/lib/reservation';
 import { COLORS } from '@/lib/constants';
 import type { Reservation, RentalPeriod, ReservationStatus, RentalPeriodStatus } from '@/types/reservation.types';
 
@@ -20,6 +20,8 @@ const RES_STATUS_COLORS: Record<ReservationStatus, string> = {
   ACTIVE: '#D1FAE5',
   REJECTED: '#FEE2E2',
   COMPLETED: '#F3F4F6',
+  CANCELLED: '#F3F4F6',
+  EXPIRED: '#FEE2E2',
 };
 
 const RES_STATUS_TEXT_COLORS: Record<ReservationStatus, string> = {
@@ -27,11 +29,14 @@ const RES_STATUS_TEXT_COLORS: Record<ReservationStatus, string> = {
   ACTIVE: COLORS.green,
   REJECTED: COLORS.red,
   COMPLETED: COLORS.textSecondary,
+  CANCELLED: COLORS.textSecondary,
+  EXPIRED: COLORS.red,
 };
 
 const PERIOD_STATUS_COLORS: Record<RentalPeriodStatus, string> = {
   UPCOMING: '#EBF0FF',
   DUE: '#FEF3C7',
+  PARTIALLY_PAID: '#FEF3C7',
   PAID: '#D1FAE5',
   OVERDUE: '#FEE2E2',
 };
@@ -39,6 +44,7 @@ const PERIOD_STATUS_COLORS: Record<RentalPeriodStatus, string> = {
 const PERIOD_STATUS_TEXT_COLORS: Record<RentalPeriodStatus, string> = {
   UPCOMING: COLORS.primary,
   DUE: COLORS.orange,
+  PARTIALLY_PAID: COLORS.orange,
   PAID: COLORS.green,
   OVERDUE: COLORS.red,
 };
@@ -57,17 +63,19 @@ function RentalPeriodCard({ period }: { period: RentalPeriod }) {
   return (
     <View style={styles.periodCard}>
       <View style={styles.periodLeft}>
-        <Text style={styles.periodNumber}>Month {period.periodNumber}</Text>
+        <Text style={styles.periodLabel}>{period.periodLabel}</Text>
         <Text style={styles.periodDue}>Due: {formatDate(period.dueDate)}</Text>
-        {period.paidDate && (
-          <Text style={styles.periodPaid}>Paid: {formatDate(period.paidDate)}</Text>
+        {period.payments.length > 0 && (
+          <Text style={styles.periodPaid}>
+            {period.payments.filter((p) => p.status === 'CONFIRMED').length} payment(s) confirmed
+          </Text>
         )}
       </View>
       <View style={styles.periodRight}>
-        <Text style={styles.periodAmount}>LKR {period.amount.toLocaleString()}</Text>
+        <Text style={styles.periodAmount}>LKR {period.amountDue.toLocaleString()}</Text>
         <View style={[styles.periodStatusBadge, { backgroundColor: PERIOD_STATUS_COLORS[period.status] }]}>
           <Text style={[styles.periodStatusText, { color: PERIOD_STATUS_TEXT_COLORS[period.status] }]}>
-            {period.status}
+            {period.status.replace('_', ' ')}
           </Text>
         </View>
       </View>
@@ -75,10 +83,17 @@ function RentalPeriodCard({ period }: { period: RentalPeriod }) {
   );
 }
 
-function ReservationCard({ item }: { item: Reservation }) {
+function ReservationCard({
+  item,
+  onCancelled,
+}: {
+  item: Reservation;
+  onCancelled: (updated: Reservation) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [rentalPeriods, setRentalPeriods] = useState<RentalPeriod[]>(item.rentalPeriods ?? []);
   const [loadingPeriods, setLoadingPeriods] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const handleExpand = async () => {
     if (!expanded && rentalPeriods.length === 0 && item.status === 'ACTIVE') {
@@ -93,6 +108,36 @@ function ReservationCard({ item }: { item: Reservation }) {
       }
     }
     setExpanded((v) => !v);
+  };
+
+  const handleCancel = () => {
+    Alert.alert(
+      'Cancel Reservation',
+      item.status === 'ACTIVE'
+        ? 'Cancelling an ACTIVE reservation will also decrement the occupancy count. Are you sure?'
+        : 'Are you sure you want to cancel this reservation?',
+      [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Cancel Reservation',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              const result = await cancelReservation(item.id);
+              onCancelled(result.data.reservation);
+            } catch (err: unknown) {
+              const message =
+                (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+                'Failed to cancel reservation.';
+              Alert.alert('Error', message);
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -125,13 +170,36 @@ function ReservationCard({ item }: { item: Reservation }) {
             LKR {item.boarding.monthlyRent.toLocaleString()} / month
           </Text>
         </View>
-        {item.status === 'REJECTED' && item.rejectionReason && (
+        {item.specialRequests ? (
+          <View style={styles.infoRow}>
+            <Ionicons name="document-text-outline" size={15} color={COLORS.primary} />
+            <Text style={styles.infoText} numberOfLines={2}>{item.specialRequests}</Text>
+          </View>
+        ) : null}
+        {(item.status === 'REJECTED' || item.status === 'CANCELLED') && item.rejectionReason && (
           <View style={styles.rejectionCard}>
-            <Text style={styles.rejectionLabel}>Rejection Reason:</Text>
+            <Text style={styles.rejectionLabel}>
+              {item.status === 'REJECTED' ? 'Rejection Reason:' : 'Cancellation Reason:'}
+            </Text>
             <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
           </View>
         )}
       </View>
+
+      {/* Cancel button (PENDING or ACTIVE) */}
+      {(item.status === 'PENDING' || item.status === 'ACTIVE') && (
+        <TouchableOpacity
+          style={styles.cancelBtn}
+          onPress={handleCancel}
+          disabled={cancelling}
+        >
+          {cancelling ? (
+            <ActivityIndicator size="small" color={COLORS.red} />
+          ) : (
+            <Text style={styles.cancelBtnText}>Cancel Reservation</Text>
+          )}
+        </TouchableOpacity>
+      )}
 
       {/* Rental periods (only for ACTIVE) */}
       {item.status === 'ACTIVE' && (
@@ -181,6 +249,10 @@ export default function MyReservationsScreen() {
 
   useFocusEffect(useCallback(() => { loadReservations(); }, [loadReservations]));
 
+  const handleCancelled = (updated: Reservation) => {
+    setReservations((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -200,7 +272,9 @@ export default function MyReservationsScreen() {
           data={reservations}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => <ReservationCard item={item} />}
+          renderItem={({ item }) => (
+            <ReservationCard item={item} onCancelled={handleCancelled} />
+          )}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
@@ -270,7 +344,7 @@ const styles = StyleSheet.create({
 
   cardBody: { padding: 14, gap: 8 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  infoText: { fontSize: 13, color: COLORS.textSecondary },
+  infoText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
 
   rejectionCard: {
     backgroundColor: '#FFF1F0',
@@ -282,6 +356,15 @@ const styles = StyleSheet.create({
   },
   rejectionLabel: { fontSize: 11, fontWeight: '700', color: COLORS.red, marginBottom: 2 },
   rejectionText: { fontSize: 13, color: COLORS.text },
+
+  cancelBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.grayLight,
+  },
+  cancelBtnText: { fontSize: 13, color: COLORS.red, fontWeight: '600' },
 
   expandBtn: {
     flexDirection: 'row',
@@ -307,8 +390,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.grayBorder,
   },
-  periodLeft: { gap: 2 },
-  periodNumber: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  periodLeft: { gap: 2, flex: 1 },
+  periodLabel: { fontSize: 13, fontWeight: '700', color: COLORS.text },
   periodDue: { fontSize: 12, color: COLORS.textSecondary },
   periodPaid: { fontSize: 12, color: COLORS.green },
   periodRight: { alignItems: 'flex-end', gap: 4 },
@@ -328,3 +411,4 @@ const styles = StyleSheet.create({
   },
   browseBtnText: { fontSize: 14, fontWeight: '700', color: COLORS.white },
 });
+
