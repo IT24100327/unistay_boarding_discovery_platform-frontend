@@ -124,17 +124,18 @@ export default function MyListingsScreen() {
             <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
             <TouchableOpacity
               style={styles.menuBtn}
-              onPress={() =>
-                Alert.alert(item.title, 'Choose an action', [
-                  ...(item.status === 'ACTIVE'
-                    ? [{ text: 'Deactivate', onPress: () => handleDeactivate(item) }]
-                    : []),
-                  ...(item.status === 'INACTIVE'
-                    ? [{ text: 'Activate', onPress: () => handleActivate(item) }]
-                    : []),
-                  { text: 'Cancel', style: 'cancel' as const },
-                ])
-              }
+              onPress={() => {
+                const actions: { text: string; style?: 'cancel' | 'default' | 'destructive'; onPress?: () => void }[] = [];
+                if (item.status === 'ACTIVE') {
+                  actions.push({ text: 'Deactivate', style: 'destructive', onPress: () => handleDeactivate(item) });
+                }
+                if (item.status === 'INACTIVE') {
+                  actions.push({ text: 'Activate', onPress: () => handleActivate(item) });
+                }
+                actions.push({ text: 'Edit', onPress: () => router.push(`/my-listings/${item.id}/edit` as never) });
+                actions.push({ text: 'Cancel', style: 'cancel' });
+                Alert.alert(item.title, 'Choose an action', actions);
+              }}
             >
               <Ionicons name="ellipsis-vertical" size={18} color={COLORS.gray} />
             </TouchableOpacity>
