@@ -25,6 +25,10 @@ export default function RootLayout() {
         <Stack.Screen name="profile" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen name="saved" />
+        <Stack.Screen name="my-listings" />
+        <Stack.Screen name="boardings" />
+        <Stack.Screen name="explore" />
       </Stack>
       <Toast />
     </GestureHandlerRootView>

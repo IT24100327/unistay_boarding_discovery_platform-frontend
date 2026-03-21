@@ -61,7 +61,7 @@ export default function ProfileScreen() {
       label: 'Saved Boardings',
       sublabel: 'Wishlist',
       icon: <Ionicons name="heart-outline" size={20} color="#EF4444" />,
-      onPress: () => {},
+      onPress: () => router.push('/saved'),
     },
     {
       id: 'marketplace',

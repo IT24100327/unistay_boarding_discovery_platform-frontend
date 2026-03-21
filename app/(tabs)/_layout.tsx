@@ -1,8 +1,12 @@
+import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '@/lib/constants';
 import { useNotificationStore } from '@/store/notification.store';
+import { useAuthStore } from '@/store/auth.store';
+import { useBoardingStore } from '@/store/boarding.store';
+import { getSavedBoardings } from '@/lib/saved-boarding';
 
 function TabBarIcon({ name, color, size }: { name: string; color: string; size: number }) {
   return <Ionicons name={name as never} size={size} color={color} />;
@@ -23,6 +27,18 @@ function MessagesIcon({ color, size }: { color: string; size: number }) {
 }
 
 export default function TabsLayout() {
+  const { isAuthenticated, user } = useAuthStore();
+  const { setSavedIds } = useBoardingStore();
+
+  // Seed saved boarding IDs so heart icons reflect persisted state
+  // on Home and Search without requiring a visit to the Saved screen first.
+  useEffect(() => {
+    if (!isAuthenticated || user?.role === 'OWNER') return;
+    getSavedBoardings()
+      .then((r) => setSavedIds(r.data.saved.map((s) => s.boardingId)))
+      .catch((err) => console.warn('[TabsLayout] Failed to load saved boarding IDs:', err));
+  }, [isAuthenticated, user?.role, setSavedIds]);
+
   return (
     <Tabs
       screenOptions={{
