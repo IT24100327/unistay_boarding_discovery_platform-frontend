@@ -34,14 +34,17 @@ export default function SavedBoardingsScreen() {
       const result = await getSavedBoardings();
       const saved = result.data.saved;
       setBoardings(saved.map((s) => s.boarding));
-      setSavedIds(saved.map((s) => s.boardingId));
+      // Do NOT call setSavedIds here — it would overwrite the store and reset
+      // heart icons on Home/Search. The store is seeded once in (tabs)/_layout
+      // and kept in sync by useSaveBoarding. Only unsave (handleUnsave below)
+      // needs to remove an id from the store.
     } catch {
       Alert.alert('Error', 'Failed to load saved boardings. Please try again.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [setSavedIds]);
+  }, []);
 
   useFocusEffect(useCallback(() => { loadSaved(); }, [loadSaved]));
 
