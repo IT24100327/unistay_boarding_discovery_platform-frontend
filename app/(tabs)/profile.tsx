@@ -97,6 +97,13 @@ export default function ProfileScreen() {
             icon: <Ionicons name="cash-outline" size={20} color={COLORS.primary} />,
             onPress: () => router.push('/my-listings/payments' as never),
           },
+          {
+            id: 'payment-history',
+            label: 'Payment History',
+            sublabel: 'Confirmed payments & earnings summary',
+            icon: <Ionicons name="time-outline" size={20} color={COLORS.primary} />,
+            onPress: () => router.push('/my-listings/payment-history' as never),
+          },
         ]
       : []),
     {

@@ -144,8 +144,19 @@ export default function OwnerPaymentsDashboard() {
     }
   };
 
+  const handleCardPress = (item: DetailedPayment) => {
+    router.push({
+      pathname: '/my-listings/payment-detail',
+      params: { data: JSON.stringify(item) },
+    } as never);
+  };
+
   const renderItem = ({ item }: { item: DetailedPayment }) => (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => handleCardPress(item)}
+      activeOpacity={0.85}
+    >
       <View style={styles.cardHeader}>
         <View style={{ flex: 1, gap: 2 }}>
           {/* Tenant name */}
@@ -154,6 +165,9 @@ export default function OwnerPaymentsDashboard() {
               {item.reservation.student.firstName} {item.reservation.student.lastName}
             </Text>
           )}
+          {item.reservation?.student?.email && (
+            <Text style={styles.tenantEmail}>{item.reservation.student.email}</Text>
+          )}
           {item.reservation?.boarding?.title && (
             <Text style={styles.boardingName} numberOfLines={1}>
               {item.reservation.boarding.title}
@@ -161,6 +175,7 @@ export default function OwnerPaymentsDashboard() {
           )}
           <Text style={styles.periodLabel}>
             {item.rentalPeriod?.periodLabel ?? '—'}
+            {item.rentalPeriod?.dueDate ? `  ·  Due ${formatDate(item.rentalPeriod.dueDate)}` : ''}
           </Text>
         </View>
         <View style={styles.rightCol}>
@@ -185,6 +200,16 @@ export default function OwnerPaymentsDashboard() {
         </View>
       )}
 
+      {/* Confirmation info */}
+      {item.status === 'CONFIRMED' && item.confirmedAt && (
+        <View style={styles.refRow}>
+          <Ionicons name="checkmark-circle-outline" size={13} color={COLORS.green} />
+          <Text style={[styles.refText, { color: COLORS.green }]}>
+            Confirmed {formatDate(item.confirmedAt)}
+          </Text>
+        </View>
+      )}
+
       {/* Rejection reason (shown on rejected items) */}
       {item.status === 'REJECTED' && item.rejectionReason && (
         <View style={styles.rejectionCard}>
@@ -199,7 +224,7 @@ export default function OwnerPaymentsDashboard() {
           {item.proofImageUrl && (
             <TouchableOpacity
               style={styles.proofBtn}
-              onPress={() => setProofPayment(item)}
+              onPress={(e) => { e.stopPropagation?.(); setProofPayment(item); }}
             >
               <Ionicons name="image-outline" size={15} color={COLORS.primary} />
               <Text style={styles.proofBtnText}>View Proof</Text>
@@ -207,7 +232,7 @@ export default function OwnerPaymentsDashboard() {
           )}
           <TouchableOpacity
             style={styles.rejectBtn}
-            onPress={() => openRejectModal(item.id)}
+            onPress={(e) => { e.stopPropagation?.(); openRejectModal(item.id); }}
             disabled={isActing}
           >
             <Ionicons name="close-outline" size={15} color={COLORS.red} />
@@ -215,7 +240,7 @@ export default function OwnerPaymentsDashboard() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.confirmBtn}
-            onPress={() => handleConfirm(item.id)}
+            onPress={(e) => { e.stopPropagation?.(); handleConfirm(item.id); }}
             disabled={isActing}
           >
             <Ionicons name="checkmark-outline" size={15} color={COLORS.white} />
@@ -223,7 +248,7 @@ export default function OwnerPaymentsDashboard() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -233,9 +258,17 @@ export default function OwnerPaymentsDashboard() {
           <Ionicons name="arrow-back" size={22} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Tenant Payments</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={load}>
-          <Ionicons name="refresh-outline" size={20} color={COLORS.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => router.push('/my-listings/payment-history' as never)}
+          >
+            <Ionicons name="time-outline" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={load}>
+            <Ionicons name="refresh-outline" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Filter tabs */}
@@ -394,6 +427,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
   },
+  headerRight: { flexDirection: 'row', gap: 4 },
+  headerIconBtn: { width: 36, height: 40, alignItems: 'center', justifyContent: 'center' },
 
   filterRow: {
     flexDirection: 'row',
@@ -431,6 +466,7 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   tenantName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  tenantEmail: { fontSize: 11, color: COLORS.textSecondary },
   boardingName: { fontSize: 12, color: COLORS.textSecondary },
   periodLabel: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
   rightCol: { alignItems: 'flex-end', gap: 3 },
