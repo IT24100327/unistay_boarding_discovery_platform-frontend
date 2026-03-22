@@ -64,7 +64,7 @@ function BoardingCard({ item, showOccupancy }: { item: Boarding; showOccupancy?:
           <Ionicons name="location-outline" size={11} color={COLORS.gray} /> {item.city}
         </Text>
         <View style={styles.boardingFooter}>
-          <Text style={styles.boardingPrice}>LKR {item.monthlyRent.toLocaleString()}/mo</Text>
+          <Text style={styles.boardingPrice}>LKR {(item.monthlyRent ?? 0).toLocaleString()}/mo</Text>
         </View>
       </View>
     </TouchableOpacity>
