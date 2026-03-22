@@ -167,7 +167,9 @@ function ReservationCard({
         <View style={styles.infoRow}>
           <Ionicons name="cash-outline" size={15} color={COLORS.primary} />
           <Text style={styles.infoText}>
-            LKR {(item.boarding?.monthlyRent ?? 0).toLocaleString()} / month
+            {item.boarding?.monthlyRent
+              ? `LKR ${item.boarding.monthlyRent.toLocaleString()} / month`
+              : '—'}
           </Text>
         </View>
         {item.specialRequests ? (
