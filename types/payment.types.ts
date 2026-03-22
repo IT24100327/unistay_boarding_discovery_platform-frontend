@@ -37,7 +37,6 @@ export interface DetailedPayment {
 }
 
 export interface CreatePaymentPayload {
-  studentId: string;
   rentalPeriodId: string;
   reservationId: string;
   amount: number;
@@ -45,8 +44,8 @@ export interface CreatePaymentPayload {
   /** ISO-8601 datetime string */
   paidAt: string;
   referenceNumber?: string;
-  /** Local file URI of the proof image; the backend handles the Cloudinary upload */
-  proofImageUri?: string;
+  /** Hosted URL returned by PUT /payments/proof-image */
+  proofImageUrl?: string;
 }
 
 export interface RejectPaymentPayload {

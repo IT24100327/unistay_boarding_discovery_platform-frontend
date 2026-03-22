@@ -15,7 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getReservationById, getRentalPeriods, cancelReservation } from '@/lib/reservation';
-import { createPayment } from '@/lib/payment';
+import { createPayment, uploadProofImage } from '@/lib/payment';
 import { COLORS } from '@/lib/constants';
 import type { Reservation, RentalPeriod, ReservationStatus, RentalPeriodStatus } from '@/types/reservation.types';
 import type { PaymentMethod } from '@/types/reservation.types';
@@ -286,17 +286,21 @@ export default function ReservationDetailScreen() {
         paid.setHours(23, 59, 0, 0);
       }
 
+      // Step 1: if a proof image was selected, upload it first to get a URL.
+      let proofImageUrl: string | undefined;
+      if (proofUri) {
+        proofImageUrl = await uploadProofImage(proofUri);
+      }
+
       const paymentPayload = {
-        studentId: reservation.studentId,
         rentalPeriodId: logPaymentPeriod.id,
         reservationId: reservation.id,
         amount,
         paymentMethod: payMethod,
         paidAt: paid.toISOString(),
         ...(payRef.trim() ? { referenceNumber: payRef.trim() } : {}),
-        ...(proofUri ? { proofImageUri: proofUri } : {}),
+        ...(proofImageUrl ? { proofImageUrl } : {}),
       };
-      console.log('[handleSubmitPayment] submitting payment payload:', JSON.stringify({ ...paymentPayload, proofImageUri: proofUri ? '(uri set)' : undefined }));
 
       await createPayment(paymentPayload);
 
