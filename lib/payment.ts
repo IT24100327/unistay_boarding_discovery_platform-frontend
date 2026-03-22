@@ -30,7 +30,17 @@ export async function createPayment(payload: CreatePaymentPayload) {
       const response = await api.post<UniStayApiResponse<{ payment: DetailedPayment }>>(
         '/payments',
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } },
+        {
+          // Delete Content-Type so React Native's XHR sets it automatically
+          // as multipart/form-data with the correct boundary. Setting it
+          // manually (even to 'multipart/form-data') omits the boundary and
+          // causes a Network Error on physical devices.
+          transformRequest: (data, headers) => {
+            if (headers) delete headers['Content-Type'];
+            return data;
+          },
+          timeout: 60000,
+        },
       );
       console.log('[createPayment] multipart success — status:', response.status, '| data:', JSON.stringify(response.data));
       return response.data;
