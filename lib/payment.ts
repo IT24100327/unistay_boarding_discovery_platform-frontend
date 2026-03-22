@@ -1,4 +1,6 @@
 import api from './api';
+import { API_URL } from './constants';
+import { storage } from './storage';
 import type { UniStayApiResponse } from '@/types/api.types';
 import type {
   DetailedPayment,
@@ -27,23 +29,30 @@ export async function createPayment(payload: CreatePaymentPayload) {
     console.log('[createPayment] posting multipart to /payments');
 
     try {
-      const response = await api.post<UniStayApiResponse<{ payment: DetailedPayment }>>(
-        '/payments',
-        formData,
-        {
-          // Delete Content-Type so React Native's XHR sets it automatically
-          // as multipart/form-data with the correct boundary. Setting it
-          // manually (even to 'multipart/form-data') omits the boundary and
-          // causes a Network Error on physical devices.
-          transformRequest: (data, headers) => {
-            if (headers) delete headers['Content-Type'];
-            return data;
-          },
-          timeout: 60000,
-        },
-      );
-      console.log('[createPayment] multipart success — status:', response.status, '| data:', JSON.stringify(response.data));
-      return response.data;
+      // Use native fetch instead of Axios for multipart uploads.
+      // Axios v1.x uses AxiosHeaders which ignores `delete headers['Content-Type']`,
+      // so the 'application/json' default leaks through and React Native's XHR
+      // produces a Network Error. Native fetch handles FormData natively and sets
+      // the correct Content-Type header (with boundary) automatically.
+      const token = await storage.getToken();
+      const fetchResponse = await fetch(`${API_URL}/payments`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const responseData = await fetchResponse.json() as UniStayApiResponse<{ payment: DetailedPayment }>;
+      if (!fetchResponse.ok) {
+        console.error(
+          '[createPayment] multipart error — status:', fetchResponse.status,
+          '| data:', JSON.stringify(responseData),
+        );
+        const err = Object.assign(new Error(`HTTP ${fetchResponse.status}`), {
+          response: { status: fetchResponse.status, data: responseData },
+        });
+        throw err;
+      }
+      console.log('[createPayment] multipart success — status:', fetchResponse.status, '| data:', JSON.stringify(responseData));
+      return responseData;
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: unknown }; message?: string };
       console.error(
