@@ -4,6 +4,7 @@ export interface DetailedPayment {
   id: string;
   reservationId: string;
   rentalPeriodId: string;
+  studentId: string;
   /** Prisma Decimal serialised as string, e.g. "14000.00" */
   amount: string;
   paymentMethod: PaymentMethod;
