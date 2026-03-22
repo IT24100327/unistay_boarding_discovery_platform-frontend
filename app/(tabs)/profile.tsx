@@ -90,6 +90,13 @@ export default function ProfileScreen() {
             icon: <Ionicons name="people-outline" size={20} color={COLORS.primary} />,
             onPress: () => router.push('/my-listings/tenants' as never),
           },
+          {
+            id: 'payments',
+            label: 'Tenant Payments',
+            sublabel: 'Review, approve or reject payments',
+            icon: <Ionicons name="cash-outline" size={20} color={COLORS.primary} />,
+            onPress: () => router.push('/my-listings/payments' as never),
+          },
         ]
       : []),
     {
