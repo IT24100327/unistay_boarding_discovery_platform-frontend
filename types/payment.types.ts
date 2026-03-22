@@ -37,6 +37,7 @@ export interface DetailedPayment {
 }
 
 export interface CreatePaymentPayload {
+  studentId: string;
   rentalPeriodId: string;
   reservationId: string;
   amount: number;

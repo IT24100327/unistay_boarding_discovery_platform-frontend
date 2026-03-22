@@ -297,6 +297,7 @@ export default function ReservationDetailScreen() {
       }
 
       await createPayment({
+        studentId: reservation.studentId,
         rentalPeriodId: logPaymentPeriod.id,
         reservationId: reservation.id,
         amount,
