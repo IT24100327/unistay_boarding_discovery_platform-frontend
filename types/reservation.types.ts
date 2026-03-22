@@ -19,7 +19,12 @@ export interface Payment {
   paymentMethod: PaymentMethod;
   status: PaymentStatus;
   paidAt: string | null;
+  referenceNumber: string | null;
+  proofImageUrl: string | null;
+  rejectionReason: string | null;
   confirmedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ReservationBoardingInfo {

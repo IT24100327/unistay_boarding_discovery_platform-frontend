@@ -7,13 +7,20 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
+  Image,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getReservationById, getRentalPeriods, cancelReservation } from '@/lib/reservation';
+import { createPayment } from '@/lib/payment';
+import { uploadImage } from '@/lib/cloudinary';
 import { COLORS } from '@/lib/constants';
 import type { Reservation, RentalPeriod, ReservationStatus, RentalPeriodStatus } from '@/types/reservation.types';
+import type { PaymentMethod } from '@/types/reservation.types';
+import * as ImagePicker from 'expo-image-picker';
 
 // ─── Status config ──────────────────────────────────────────────────────────────
 const STATUS_BG: Record<ReservationStatus, string> = {
@@ -69,15 +76,28 @@ function formatDateTime(iso: string) {
 }
 
 // ─── Rental Period Row ──────────────────────────────────────────────────────────
-function RentalPeriodRow({ period }: { period: RentalPeriod }) {
+const LOG_PAYMENT_ELIGIBLE: RentalPeriodStatus[] = ['UPCOMING', 'DUE', 'PARTIALLY_PAID'];
+
+function RentalPeriodRow({
+  period,
+  onLogPayment,
+}: {
+  period: RentalPeriod;
+  onLogPayment?: (period: RentalPeriod) => void;
+}) {
+  const confirmedTotal = period.payments
+    .filter((p) => p.status === 'CONFIRMED')
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const remaining = Math.max(0, (period.amountDue ?? 0) - confirmedTotal);
+
   return (
     <View style={styles.periodRow}>
       <View style={styles.periodLeft}>
         <Text style={styles.periodLabel}>{period.periodLabel}</Text>
         <Text style={styles.periodDue}>Due: {formatDate(period.dueDate)}</Text>
-        {period.payments.length > 0 && (
+        {confirmedTotal > 0 && (
           <Text style={styles.periodPaid}>
-            {period.payments.filter((p) => p.status === 'CONFIRMED').length} payment(s) confirmed
+            Paid: LKR {confirmedTotal.toLocaleString()} · Remaining: LKR {remaining.toLocaleString()}
           </Text>
         )}
       </View>
@@ -88,6 +108,15 @@ function RentalPeriodRow({ period }: { period: RentalPeriod }) {
             {period.status.replace('_', ' ')}
           </Text>
         </View>
+        {LOG_PAYMENT_ELIGIBLE.indexOf(period.status) !== -1 && onLogPayment && (
+          <TouchableOpacity
+            style={styles.logPaymentBtn}
+            onPress={() => onLogPayment(period)}
+          >
+            <Ionicons name="add-circle-outline" size={13} color={COLORS.primary} />
+            <Text style={styles.logPaymentBtnText}>Log Payment</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -108,6 +137,25 @@ function InfoRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ion
   );
 }
 
+// ─── Log Payment helpers ─────────────────────────────────────────────────────────
+const PAYMENT_METHODS: { label: string; value: PaymentMethod }[] = [
+  { label: 'Cash', value: 'CASH' },
+  { label: 'Bank Transfer', value: 'BANK_TRANSFER' },
+  { label: 'Online', value: 'ONLINE' },
+];
+
+function getPastDays(count: number): Date[] {
+  const days: Date[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 0; i < count; i++) {
+    const d = new Date(today.getTime());
+    d.setDate(today.getDate() - i);
+    days.push(d);
+  }
+  return days;
+}
+
 // ─── Screen ─────────────────────────────────────────────────────────────────────
 export default function ReservationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -118,6 +166,17 @@ export default function ReservationDetailScreen() {
   const [loadingPeriods, setLoadingPeriods] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [periodsExpanded, setPeriodsExpanded] = useState(false);
+
+  // Log Payment Modal
+  const [logPaymentPeriod, setLogPaymentPeriod] = useState<RentalPeriod | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState<PaymentMethod>('CASH');
+  const [payDate, setPayDate] = useState<Date>(new Date());
+  const [payRef, setPayRef] = useState('');
+  const [proofUri, setProofUri] = useState<string | null>(null);
+  const [proofUploading, setProofUploading] = useState(false);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const pastDays = getPastDays(30);
 
   useEffect(() => {
     if (!id) return;
@@ -172,6 +231,95 @@ export default function ReservationDetailScreen() {
         },
       ],
     );
+  };
+
+  // ── Log Payment handlers ─────────────────────────────────────────────────────
+  const openLogPayment = (period: RentalPeriod) => {
+    const confirmedTotal = period.payments
+      .filter((p) => p.status === 'CONFIRMED')
+      .reduce((sum, p) => sum + Number(p.amount), 0);
+    const remaining = Math.max(0, (period.amountDue ?? 0) - confirmedTotal);
+    setPayAmount(remaining > 0 ? String(remaining) : '');
+    setPayMethod('CASH');
+    setPayDate(new Date());
+    setPayRef('');
+    setProofUri(null);
+    setLogPaymentPeriod(period);
+  };
+
+  const handlePickProof = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setProofUri(result.assets[0].uri);
+    }
+  };
+
+  const handleSubmitPayment = async () => {
+    if (!logPaymentPeriod || !reservation) return;
+    const amount = Number(payAmount);
+    if (!payAmount || isNaN(amount) || amount <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid positive amount.');
+      return;
+    }
+    if (payRef.length > 100) {
+      Alert.alert('Too Long', 'Reference number must be 100 characters or less.');
+      return;
+    }
+
+    setIsSubmittingPayment(true);
+    try {
+      let proofImageUrl: string | undefined;
+      if (proofUri) {
+        setProofUploading(true);
+        const uploadResult = await uploadImage(proofUri, 'uniboard/payments');
+        proofImageUrl = uploadResult.url;
+        setProofUploading(false);
+      }
+
+      // Build paidAt: use selected date with current time. For past dates, cap
+      // time at 23:59 to stay on that calendar day while remaining in the past.
+      const now = new Date();
+      const paid = new Date(payDate.getTime());
+      const isToday = payDate.toDateString() === now.toDateString();
+      if (isToday) {
+        paid.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
+      } else {
+        paid.setHours(23, 59, 0, 0);
+      }
+
+      await createPayment({
+        rentalPeriodId: logPaymentPeriod.id,
+        reservationId: reservation.id,
+        amount,
+        paymentMethod: payMethod,
+        paidAt: paid.toISOString(),
+        ...(payRef.trim() ? { referenceNumber: payRef.trim() } : {}),
+        ...(proofImageUrl ? { proofImageUrl } : {}),
+      });
+
+      // Refresh rental periods
+      const res = await getRentalPeriods(reservation.id);
+      setRentalPeriods(res.data.rentalPeriods);
+      setLogPaymentPeriod(null);
+      Alert.alert('Payment Logged', 'Your payment has been submitted and is awaiting owner confirmation.');
+    } catch (err: unknown) {
+      setProofUploading(false);
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Failed to log payment.';
+      Alert.alert('Error', msg);
+    } finally {
+      setIsSubmittingPayment(false);
+    }
   };
 
   if (isLoading) {
@@ -325,7 +473,13 @@ export default function ReservationDetailScreen() {
                 ) : rentalPeriods.length === 0 ? (
                   <Text style={styles.emptyPeriodsText}>No rental periods found.</Text>
                 ) : (
-                  rentalPeriods.map((p) => <RentalPeriodRow key={p.id} period={p} />)
+                  rentalPeriods.map((p) => (
+                    <RentalPeriodRow
+                      key={p.id}
+                      period={p}
+                      onLogPayment={openLogPayment}
+                    />
+                  ))
                 )}
               </>
             )}
@@ -352,6 +506,151 @@ export default function ReservationDetailScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* ── Log Payment Modal ── */}
+      <Modal
+        visible={!!logPaymentPeriod}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLogPaymentPeriod(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Log Payment</Text>
+              <TouchableOpacity onPress={() => setLogPaymentPeriod(null)}>
+                <Ionicons name="close" size={22} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            {logPaymentPeriod && (
+              <Text style={styles.modalSubtitle}>
+                Period: {logPaymentPeriod.periodLabel} · Due: LKR{' '}
+                {(logPaymentPeriod.amountDue ?? 0).toLocaleString()}
+              </Text>
+            )}
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
+              {/* Amount */}
+              <Text style={styles.fieldLabel}>Amount (LKR) *</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. 14000"
+                placeholderTextColor={COLORS.gray}
+                keyboardType="numeric"
+                value={payAmount}
+                onChangeText={setPayAmount}
+              />
+
+              {/* Payment Method */}
+              <Text style={styles.fieldLabel}>Payment Method *</Text>
+              <View style={styles.methodRow}>
+                {PAYMENT_METHODS.map((m) => (
+                  <TouchableOpacity
+                    key={m.value}
+                    style={[
+                      styles.methodBtn,
+                      payMethod === m.value && styles.methodBtnActive,
+                    ]}
+                    onPress={() => setPayMethod(m.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.methodBtnText,
+                        payMethod === m.value && styles.methodBtnTextActive,
+                      ]}
+                    >
+                      {m.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Date Picker */}
+              <Text style={styles.fieldLabel}>Payment Date *</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.datePicker}
+                contentContainerStyle={styles.datePickerContent}
+              >
+                {pastDays.map((d, i) => {
+                  const isSelected = d.toDateString() === payDate.toDateString();
+                  const isToday = i === 0;
+                  return (
+                    <TouchableOpacity
+                      key={d.toISOString()}
+                      style={[styles.dateCell, isSelected && styles.dateCellActive]}
+                      onPress={() => setPayDate(d)}
+                    >
+                      <Text style={[styles.dateCellDay, isSelected && styles.dateCellTextActive]}>
+                        {isToday ? 'Today' : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]}
+                      </Text>
+                      <Text style={[styles.dateCellNum, isSelected && styles.dateCellTextActive]}>
+                        {d.getDate()}
+                      </Text>
+                      <Text style={[styles.dateCellMonth, isSelected && styles.dateCellTextActive]}>
+                        {MONTH_NAMES[d.getMonth()]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Reference Number */}
+              <Text style={styles.fieldLabel}>Reference Number (optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. TXN123456"
+                placeholderTextColor={COLORS.gray}
+                value={payRef}
+                onChangeText={setPayRef}
+                maxLength={100}
+              />
+
+              {/* Proof Image */}
+              <Text style={styles.fieldLabel}>Proof Image (optional)</Text>
+              <TouchableOpacity style={styles.proofBtn} onPress={handlePickProof}>
+                <Ionicons
+                  name={proofUri ? 'image' : 'cloud-upload-outline'}
+                  size={20}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.proofBtnText}>
+                  {proofUri ? 'Change Image' : 'Upload Proof'}
+                </Text>
+              </TouchableOpacity>
+              {proofUri && (
+                <Image source={{ uri: proofUri }} style={styles.proofPreview} resizeMode="cover" />
+              )}
+
+              <View style={{ height: 12 }} />
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setLogPaymentPeriod(null)}
+                disabled={isSubmittingPayment}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, isSubmittingPayment && { opacity: 0.6 }]}
+                onPress={handleSubmitPayment}
+                disabled={isSubmittingPayment}
+              >
+                {isSubmittingPayment ? (
+                  <ActivityIndicator color={COLORS.white} size="small" />
+                ) : (
+                  <Text style={styles.modalSubmitText}>
+                    {proofUploading ? 'Uploading…' : 'Submit'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -486,4 +785,107 @@ const styles = StyleSheet.create({
     borderColor: COLORS.red,
   },
   cancelBtnText: { fontSize: 15, color: COLORS.red, fontWeight: '700' },
+
+  // Log Payment button on rental period rows
+  logPaymentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 4,
+    backgroundColor: '#EBF0FF',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  logPaymentBtnText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
+
+  // Log Payment Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 34,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text },
+  modalSubtitle: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 14 },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 6, marginTop: 12 },
+  textInput: {
+    borderWidth: 1,
+    borderColor: COLORS.grayBorder,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  methodRow: { flexDirection: 'row', gap: 8 },
+  methodBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: COLORS.grayBorder,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  methodBtnActive: { borderColor: COLORS.primary, backgroundColor: '#EBF0FF' },
+  methodBtnText: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
+  methodBtnTextActive: { color: COLORS.primary },
+  datePicker: { marginBottom: 4 },
+  datePickerContent: { gap: 8, paddingVertical: 4 },
+  dateCell: {
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.grayBorder,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    minWidth: 58,
+  },
+  dateCellActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary },
+  dateCellDay: { fontSize: 10, color: COLORS.textSecondary, fontWeight: '600' },
+  dateCellNum: { fontSize: 18, fontWeight: '800', color: COLORS.text },
+  dateCellMonth: { fontSize: 10, color: COLORS.textSecondary },
+  dateCellTextActive: { color: COLORS.white },
+  proofBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderStyle: 'dashed',
+  },
+  proofBtnText: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
+  proofPreview: { width: '100%', height: 160, borderRadius: 10, marginTop: 8 },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  modalCancelBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: COLORS.grayBorder,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalCancelText: { fontSize: 14, fontWeight: '600', color: COLORS.textSecondary },
+  modalSubmitBtn: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalSubmitText: { fontSize: 14, fontWeight: '700', color: COLORS.white },
 });
