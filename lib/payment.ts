@@ -1,6 +1,4 @@
 import api from './api';
-import { API_URL } from './constants';
-import { storage } from './storage';
 import type { UniStayApiResponse } from '@/types/api.types';
 import type {
   DetailedPayment,
@@ -10,8 +8,8 @@ import type {
 
 /**
  * Upload a local image file to `PUT /payments/proof-image` and return the
- * hosted URL. Uses native fetch so React Native sets the correct
- * `multipart/form-data; boundary=…` header automatically.
+ * hosted URL. Uses the axios instance so the Authorization header is added
+ * automatically and React Native handles the multipart boundary correctly.
  */
 export async function uploadProofImage(uri: string): Promise<string> {
   const filename = uri.split('/').pop() ?? 'proof.jpg';
@@ -20,23 +18,13 @@ export async function uploadProofImage(uri: string): Promise<string> {
   const formData = new FormData();
   formData.append('proofImage', { uri, name: filename, type } as unknown as Blob);
 
-  const token = await storage.getToken();
-  const response = await fetch(`${API_URL}/payments/proof-image`, {
-    method: 'PUT',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-  });
+  const response = await api.put<UniStayApiResponse<{ proofImageUrl: string }>>(
+    '/payments/proof-image',
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
 
-  const responseData = await response.json() as UniStayApiResponse<{ proofImageUrl: string }>;
-
-  if (!response.ok) {
-    const err = Object.assign(new Error(`HTTP ${response.status}`), {
-      response: { status: response.status, data: responseData },
-    });
-    throw err;
-  }
-
-  return responseData.data.proofImageUrl;
+  return response.data.data.proofImageUrl;
 }
 
 export async function createPayment(payload: CreatePaymentPayload) {
