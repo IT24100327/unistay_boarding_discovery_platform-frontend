@@ -286,7 +286,7 @@ export default function ReservationDetailScreen() {
         paid.setHours(23, 59, 0, 0);
       }
 
-      await createPayment({
+      const paymentPayload = {
         studentId: reservation.studentId,
         rentalPeriodId: logPaymentPeriod.id,
         reservationId: reservation.id,
@@ -295,14 +295,19 @@ export default function ReservationDetailScreen() {
         paidAt: paid.toISOString(),
         ...(payRef.trim() ? { referenceNumber: payRef.trim() } : {}),
         ...(proofUri ? { proofImageUri: proofUri } : {}),
-      });
+      };
+      console.log('[handleSubmitPayment] submitting payment payload:', JSON.stringify({ ...paymentPayload, proofImageUri: proofUri ? '(uri set)' : undefined }));
 
+      await createPayment(paymentPayload);
+
+      console.log('[handleSubmitPayment] payment created successfully');
       // Refresh rental periods
       const res = await getRentalPeriods(reservation.id);
       setRentalPeriods(res.data.rentalPeriods);
       setLogPaymentPeriod(null);
       Alert.alert('Payment Logged', 'Your payment has been submitted and is awaiting owner confirmation.');
     } catch (err: unknown) {
+      console.error('[handleSubmitPayment] error:', err);
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         'Failed to log payment.';

@@ -8,6 +8,11 @@ import type {
 
 export async function createPayment(payload: CreatePaymentPayload) {
   if (payload.proofImageUri) {
+    const uri = payload.proofImageUri;
+    const filename = uri.split('/').pop() ?? 'proof.jpg';
+    const type = filename.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    console.log('[createPayment] multipart path — uri:', uri, '| filename:', filename, '| type:', type);
+
     const formData = new FormData();
     formData.append('studentId', payload.studentId);
     formData.append('rentalPeriodId', payload.rentalPeriodId);
@@ -18,25 +23,46 @@ export async function createPayment(payload: CreatePaymentPayload) {
     if (payload.referenceNumber) {
       formData.append('referenceNumber', payload.referenceNumber);
     }
-    const uri = payload.proofImageUri;
-    const filename = uri.split('/').pop() ?? 'proof.jpg';
-    const type = filename.endsWith('.png') ? 'image/png' : 'image/jpeg';
     formData.append('proofImage', { uri, name: filename, type } as unknown as Blob);
+    console.log('[createPayment] posting multipart to /payments');
 
-    const response = await api.post<UniStayApiResponse<{ payment: DetailedPayment }>>(
-      '/payments',
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    );
-    return response.data;
+    try {
+      const response = await api.post<UniStayApiResponse<{ payment: DetailedPayment }>>(
+        '/payments',
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      );
+      console.log('[createPayment] multipart success — status:', response.status, '| data:', JSON.stringify(response.data));
+      return response.data;
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: unknown }; message?: string };
+      console.error(
+        '[createPayment] multipart error — status:', axiosErr?.response?.status,
+        '| data:', JSON.stringify(axiosErr?.response?.data),
+        '| message:', axiosErr?.message,
+      );
+      throw err;
+    }
   }
 
+  console.log('[createPayment] JSON path (no proof image) — payload:', JSON.stringify({ ...payload, proofImageUri: undefined }));
   const { proofImageUri: _unused, ...rest } = payload;
-  const response = await api.post<UniStayApiResponse<{ payment: DetailedPayment }>>(
-    '/payments',
-    rest,
-  );
-  return response.data;
+  try {
+    const response = await api.post<UniStayApiResponse<{ payment: DetailedPayment }>>(
+      '/payments',
+      rest,
+    );
+    console.log('[createPayment] JSON success — status:', response.status, '| data:', JSON.stringify(response.data));
+    return response.data;
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { status?: number; data?: unknown }; message?: string };
+    console.error(
+      '[createPayment] JSON error — status:', axiosErr?.response?.status,
+      '| data:', JSON.stringify(axiosErr?.response?.data),
+      '| message:', axiosErr?.message,
+    );
+    throw err;
+  }
 }
 
 export async function getMyPayments() {
