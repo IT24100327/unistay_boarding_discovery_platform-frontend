@@ -72,7 +72,7 @@ function RentalPeriodCard({ period }: { period: RentalPeriod }) {
         )}
       </View>
       <View style={styles.periodRight}>
-        <Text style={styles.periodAmount}>LKR {period.amountDue.toLocaleString()}</Text>
+        <Text style={styles.periodAmount}>LKR {(period.amountDue ?? 0).toLocaleString()}</Text>
         <View style={[styles.periodStatusBadge, { backgroundColor: PERIOD_STATUS_COLORS[period.status] }]}>
           <Text style={[styles.periodStatusText, { color: PERIOD_STATUS_TEXT_COLORS[period.status] }]}>
             {period.status.replace('_', ' ')}
@@ -167,7 +167,7 @@ function ReservationCard({
         <View style={styles.infoRow}>
           <Ionicons name="cash-outline" size={15} color={COLORS.primary} />
           <Text style={styles.infoText}>
-            LKR {item.boarding.monthlyRent.toLocaleString()} / month
+            LKR {(item.boarding?.monthlyRent ?? 0).toLocaleString()} / month
           </Text>
         </View>
         {item.specialRequests ? (
