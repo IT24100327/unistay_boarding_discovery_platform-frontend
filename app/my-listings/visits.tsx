@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getReceivedVisitRequests, approveVisitRequest, rejectVisitRequest } from '@/lib/visit';
 import { COLORS } from '@/lib/constants';
-import { TIMESLOT_LABELS } from '@/types/visit.types';
 import type { VisitRequest, VisitStatus } from '@/types/visit.types';
 
 const STATUS_COLORS: Record<VisitStatus, string> = {
@@ -39,9 +38,21 @@ const MONTH_NAMES = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-function formatDate(iso: string) {
+function formatDateTime(iso: string) {
   const d = new Date(iso);
-  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  const date = `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  const h = d.getHours();
+  const suffix = h < 12 ? 'AM' : 'PM';
+  const display = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return `${date}, ${display}:${String(d.getMinutes()).padStart(2, '0')} ${suffix}`;
+}
+
+function formatTime(iso: string) {
+  const d = new Date(iso);
+  const h = d.getHours();
+  const suffix = h < 12 ? 'AM' : 'PM';
+  const display = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return `${display}:${String(d.getMinutes()).padStart(2, '0')} ${suffix}`;
 }
 
 export default function ManageVisitsScreen() {
@@ -106,7 +117,7 @@ export default function ManageVisitsScreen() {
     setIsActing(true);
     try {
       const result = await rejectVisitRequest(selectedVisitId, {
-        rejectionReason: rejectionReason.trim(),
+        reason: rejectionReason.trim(),
       });
       setVisits((prev) =>
         prev.map((v) => (v.id === selectedVisitId ? result.data.visitRequest : v)),
@@ -161,17 +172,21 @@ export default function ManageVisitsScreen() {
 
         <View style={styles.infoRow}>
           <Ionicons name="calendar-outline" size={15} color={COLORS.primary} />
-          <Text style={styles.infoText}>Visit Date: {formatDate(item.visitDate)}</Text>
+          <Text style={styles.infoText}>
+            {formatDateTime(item.requestedStartAt)} – {formatTime(item.requestedEndAt)}
+          </Text>
         </View>
-        <View style={styles.infoRow}>
-          <Ionicons name="time-outline" size={15} color={COLORS.primary} />
-          <Text style={styles.infoText}>{TIMESLOT_LABELS[item.timeslot]}</Text>
-        </View>
+        {item.message ? (
+          <View style={styles.infoRow}>
+            <Ionicons name="chatbubble-outline" size={15} color={COLORS.primary} />
+            <Text style={styles.infoText} numberOfLines={2}>{item.message}</Text>
+          </View>
+        ) : null}
         {item.status === 'PENDING' && (
           <View style={styles.infoRow}>
             <Ionicons name="hourglass-outline" size={15} color={COLORS.orange} />
             <Text style={[styles.infoText, { color: COLORS.orange }]}>
-              Expires: {formatDate(item.expiresAt)}
+              Expires: {formatDateTime(item.expiresAt)}
             </Text>
           </View>
         )}

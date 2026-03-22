@@ -26,6 +26,8 @@ const STATUS_COLORS: Record<ReservationStatus, string> = {
   ACTIVE: '#D1FAE5',
   REJECTED: '#FEE2E2',
   COMPLETED: '#F3F4F6',
+  CANCELLED: '#F3F4F6',
+  EXPIRED: '#FEE2E2',
 };
 
 const STATUS_TEXT_COLORS: Record<ReservationStatus, string> = {
@@ -33,6 +35,8 @@ const STATUS_TEXT_COLORS: Record<ReservationStatus, string> = {
   ACTIVE: COLORS.green,
   REJECTED: COLORS.red,
   COMPLETED: COLORS.textSecondary,
+  CANCELLED: COLORS.textSecondary,
+  EXPIRED: COLORS.red,
 };
 
 const MONTH_NAMES = [
@@ -111,7 +115,7 @@ export default function ManageReservationsScreen() {
     setIsActing(true);
     try {
       const result = await rejectReservation(selectedReservationId, {
-        rejectionReason: rejectionReason.trim(),
+        reason: rejectionReason.trim(),
       });
       setReservations((prev) =>
         prev.map((r) => (r.id === selectedReservationId ? result.data.reservation : r)),
