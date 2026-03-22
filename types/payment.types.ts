@@ -45,7 +45,8 @@ export interface CreatePaymentPayload {
   /** ISO-8601 datetime string */
   paidAt: string;
   referenceNumber?: string;
-  proofImageUrl?: string;
+  /** Local file URI of the proof image; the backend handles the Cloudinary upload */
+  proofImageUri?: string;
 }
 
 export interface RejectPaymentPayload {

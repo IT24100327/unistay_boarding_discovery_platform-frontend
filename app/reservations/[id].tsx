@@ -16,7 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getReservationById, getRentalPeriods, cancelReservation } from '@/lib/reservation';
 import { createPayment } from '@/lib/payment';
-import { uploadImage } from '@/lib/cloudinary';
 import { COLORS } from '@/lib/constants';
 import type { Reservation, RentalPeriod, ReservationStatus, RentalPeriodStatus } from '@/types/reservation.types';
 import type { PaymentMethod } from '@/types/reservation.types';
@@ -174,7 +173,6 @@ export default function ReservationDetailScreen() {
   const [payDate, setPayDate] = useState<Date>(new Date());
   const [payRef, setPayRef] = useState('');
   const [proofUri, setProofUri] = useState<string | null>(null);
-  const [proofUploading, setProofUploading] = useState(false);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const pastDays = getPastDays(30);
 
@@ -277,14 +275,6 @@ export default function ReservationDetailScreen() {
 
     setIsSubmittingPayment(true);
     try {
-      let proofImageUrl: string | undefined;
-      if (proofUri) {
-        setProofUploading(true);
-        const uploadResult = await uploadImage(proofUri, 'uniboard/payments');
-        proofImageUrl = uploadResult.url;
-        setProofUploading(false);
-      }
-
       // Build paidAt: use selected date with current time. For past dates, cap
       // time at 23:59 to stay on that calendar day while remaining in the past.
       const now = new Date();
@@ -304,7 +294,7 @@ export default function ReservationDetailScreen() {
         paymentMethod: payMethod,
         paidAt: paid.toISOString(),
         ...(payRef.trim() ? { referenceNumber: payRef.trim() } : {}),
-        ...(proofImageUrl ? { proofImageUrl } : {}),
+        ...(proofUri ? { proofImageUri: proofUri } : {}),
       });
 
       // Refresh rental periods
@@ -313,7 +303,6 @@ export default function ReservationDetailScreen() {
       setLogPaymentPeriod(null);
       Alert.alert('Payment Logged', 'Your payment has been submitted and is awaiting owner confirmation.');
     } catch (err: unknown) {
-      setProofUploading(false);
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         'Failed to log payment.';
@@ -643,9 +632,7 @@ export default function ReservationDetailScreen() {
                 {isSubmittingPayment ? (
                   <ActivityIndicator color={COLORS.white} size="small" />
                 ) : (
-                  <Text style={styles.modalSubmitText}>
-                    {proofUploading ? 'Uploading…' : 'Submit'}
-                  </Text>
+                  <Text style={styles.modalSubmitText}>Submit</Text>
                 )}
               </TouchableOpacity>
             </View>

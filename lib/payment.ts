@@ -7,9 +7,34 @@ import type {
 } from '@/types/payment.types';
 
 export async function createPayment(payload: CreatePaymentPayload) {
+  if (payload.proofImageUri) {
+    const formData = new FormData();
+    formData.append('studentId', payload.studentId);
+    formData.append('rentalPeriodId', payload.rentalPeriodId);
+    formData.append('reservationId', payload.reservationId);
+    formData.append('amount', String(payload.amount));
+    formData.append('paymentMethod', payload.paymentMethod);
+    formData.append('paidAt', payload.paidAt);
+    if (payload.referenceNumber) {
+      formData.append('referenceNumber', payload.referenceNumber);
+    }
+    const uri = payload.proofImageUri;
+    const filename = uri.split('/').pop() ?? 'proof.jpg';
+    const type = filename.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    formData.append('proofImage', { uri, name: filename, type } as unknown as Blob);
+
+    const response = await api.post<UniStayApiResponse<{ payment: DetailedPayment }>>(
+      '/payments',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return response.data;
+  }
+
+  const { proofImageUri: _unused, ...rest } = payload;
   const response = await api.post<UniStayApiResponse<{ payment: DetailedPayment }>>(
     '/payments',
-    payload,
+    rest,
   );
   return response.data;
 }
