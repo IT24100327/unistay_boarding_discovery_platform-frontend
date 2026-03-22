@@ -192,7 +192,9 @@ export default function BoardingDetailsScreen() {
           <Text style={styles.sectionTitle}>Pricing</Text>
           <View style={styles.pricingRow}>
             <View style={styles.pricingItem}>
-              <Text style={styles.pricingValue}>LKR {(boarding.monthlyRent ?? 0).toLocaleString()}</Text>
+              <Text style={styles.pricingValue}>
+                {boarding.monthlyRent ? `LKR ${boarding.monthlyRent.toLocaleString()}` : '—'}
+              </Text>
               <Text style={styles.pricingLabel}>Monthly Rent</Text>
             </View>
           </View>

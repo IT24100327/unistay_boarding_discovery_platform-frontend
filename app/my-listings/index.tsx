@@ -143,7 +143,9 @@ export default function MyListingsScreen() {
           <Text style={styles.cardOccupancy}>
             Occupancy: {item.currentOccupants}/{item.maxOccupants}
           </Text>
-          <Text style={styles.cardPrice}>LKR {(item.monthlyRent ?? 0).toLocaleString()}/mo</Text>
+          <Text style={styles.cardPrice}>
+            {item.monthlyRent ? `LKR ${item.monthlyRent.toLocaleString()}/mo` : '—'}
+          </Text>
           <View style={styles.cardActions}>
             <TouchableOpacity
               style={styles.editBtn}
