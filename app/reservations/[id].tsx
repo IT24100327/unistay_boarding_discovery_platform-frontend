@@ -235,8 +235,12 @@ export default function ReservationDetailScreen() {
           </Text>
         </View>
 
-        {/* Boarding section */}
-        <View style={styles.card}>
+        {/* Boarding section — tappable, links to the listing */}
+        <TouchableOpacity
+          style={styles.card}
+          activeOpacity={0.8}
+          onPress={() => router.push(`/boardings/${reservation.boarding.slug}` as never)}
+        >
           <Text style={styles.cardSectionTitle}>Boarding</Text>
           <Text style={styles.boardingTitle}>{reservation.boarding.title}</Text>
           <View style={styles.locationRow}>
@@ -245,7 +249,11 @@ export default function ReservationDetailScreen() {
               {reservation.boarding.city}, {reservation.boarding.district}
             </Text>
           </View>
-        </View>
+          <View style={styles.viewListingRow}>
+            <Text style={styles.viewListingText}>View Listing</Text>
+            <Ionicons name="arrow-forward" size={14} color={COLORS.primary} />
+          </View>
+        </TouchableOpacity>
 
         {/* Reservation details */}
         <View style={styles.card}>
@@ -399,6 +407,8 @@ const styles = StyleSheet.create({
   boardingTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   locationText: { fontSize: 13, color: COLORS.textSecondary },
+  viewListingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  viewListingText: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
 
   infoRow: {
     flexDirection: 'row',
