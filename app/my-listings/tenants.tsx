@@ -118,8 +118,8 @@ export default function ManageTenantsScreen() {
         <View style={styles.infoRow}>
           <Ionicons name="cash-outline" size={15} color={COLORS.primary} />
           <Text style={styles.infoText}>
-            {item.boarding?.monthlyRent
-              ? `LKR ${item.boarding.monthlyRent.toLocaleString()} / month`
+            {item.rentSnapshot
+              ? `LKR ${item.rentSnapshot.toLocaleString()} / month`
               : '—'}
           </Text>
         </View>

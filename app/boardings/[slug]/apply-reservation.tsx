@@ -64,6 +64,10 @@ export default function ApplyReservationScreen() {
       Alert.alert('Error', 'Boarding information is missing.');
       return;
     }
+    if (specialRequests.trim().length > 1000) {
+      Alert.alert('Too Long', 'Special requests must be 1000 characters or less.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await createReservation({
@@ -77,10 +81,13 @@ export default function ApplyReservationScreen() {
         [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Failed to submit reservation. Please try again.';
-      Alert.alert('Error', message);
+      const errData = (err as { response?: { data?: { message?: string; details?: { field: string; message: string }[] } } })?.response?.data;
+      if (errData?.details?.length) {
+        const fieldErrors = errData.details.map((d) => `• ${d.message}`).join('\n');
+        Alert.alert('Validation Error', fieldErrors);
+      } else {
+        Alert.alert('Error', errData?.message ?? 'Failed to submit reservation. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }

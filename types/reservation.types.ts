@@ -25,10 +25,11 @@ export interface Payment {
 export interface ReservationBoardingInfo {
   id: string;
   title: string;
-  address: string;
-  city: string;
   slug: string;
-  monthlyRent: number;
+  city: string;
+  district: string;
+  /** Present on some endpoints (e.g. my-boardings) but not guaranteed by all. */
+  address?: string;
 }
 
 export interface ReservationStudentInfo {
@@ -60,7 +61,13 @@ export interface Reservation {
   moveInDate: string;
   specialRequests?: string | null;
   status: ReservationStatus;
+  /** Rent amount captured at reservation creation time. Use this for price display. */
+  rentSnapshot: number;
+  /** Full boarding data captured at reservation creation time. */
+  boardingSnapshot: Record<string, unknown>;
   rejectionReason: string | null;
+  /** ISO datetime when a PENDING reservation auto-expires (72 hours after creation). */
+  expiresAt: string | null;
   createdAt: string;
   updatedAt: string;
   boarding: ReservationBoardingInfo;

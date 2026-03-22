@@ -147,7 +147,7 @@ function ReservationCard({
           <Text style={styles.cardTitle} numberOfLines={2}>{item.boarding.title}</Text>
           <Text style={styles.cardAddress} numberOfLines={1}>
             <Ionicons name="location-outline" size={12} color={COLORS.gray} />{' '}
-            {item.boarding.address}, {item.boarding.city}
+            {[item.boarding.address, item.boarding.city].filter(Boolean).join(', ')}
           </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: RES_STATUS_COLORS[item.status] }]}>
@@ -167,8 +167,8 @@ function ReservationCard({
         <View style={styles.infoRow}>
           <Ionicons name="cash-outline" size={15} color={COLORS.primary} />
           <Text style={styles.infoText}>
-            {item.boarding?.monthlyRent
-              ? `LKR ${item.boarding.monthlyRent.toLocaleString()} / month`
+            {item.rentSnapshot
+              ? `LKR ${item.rentSnapshot.toLocaleString()} / month`
               : '—'}
           </Text>
         </View>
@@ -178,6 +178,14 @@ function ReservationCard({
             <Text style={styles.infoText} numberOfLines={2}>{item.specialRequests}</Text>
           </View>
         ) : null}
+        {item.status === 'PENDING' && item.expiresAt && (
+          <View style={styles.expiryRow}>
+            <Ionicons name="time-outline" size={15} color={COLORS.orange} />
+            <Text style={styles.expiryText}>
+              Expires: {formatDate(item.expiresAt)}
+            </Text>
+          </View>
+        )}
         {(item.status === 'REJECTED' || item.status === 'CANCELLED') && item.rejectionReason && (
           <View style={styles.rejectionCard}>
             <Text style={styles.rejectionLabel}>
@@ -347,6 +355,9 @@ const styles = StyleSheet.create({
   cardBody: { padding: 14, gap: 8 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   infoText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
+
+  expiryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  expiryText: { fontSize: 12, color: COLORS.orange, fontWeight: '600' },
 
   rejectionCard: {
     backgroundColor: '#FFF1F0',
