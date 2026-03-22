@@ -1,4 +1,4 @@
-import reservationApi from './reservation-api';
+import api from './api';
 import type { UniStayApiResponse } from '@/types/api.types';
 import type {
   VisitRequest,
@@ -7,7 +7,7 @@ import type {
 } from '@/types/visit.types';
 
 export async function createVisitRequest(payload: CreateVisitRequestPayload) {
-  const response = await reservationApi.post<UniStayApiResponse<{ visitRequest: VisitRequest }>>(
+  const response = await api.post<UniStayApiResponse<{ visitRequest: VisitRequest }>>(
     '/visit-requests',
     payload,
   );
@@ -15,28 +15,28 @@ export async function createVisitRequest(payload: CreateVisitRequestPayload) {
 }
 
 export async function getMyVisitRequests() {
-  const response = await reservationApi.get<UniStayApiResponse<{ visitRequests: VisitRequest[] }>>(
+  const response = await api.get<UniStayApiResponse<{ visitRequests: VisitRequest[] }>>(
     '/visit-requests/my-requests',
   );
   return response.data;
 }
 
 export async function getReceivedVisitRequests() {
-  const response = await reservationApi.get<UniStayApiResponse<{ visitRequests: VisitRequest[] }>>(
+  const response = await api.get<UniStayApiResponse<{ visitRequests: VisitRequest[] }>>(
     '/visit-requests/my-boardings',
   );
   return response.data;
 }
 
 export async function approveVisitRequest(id: string) {
-  const response = await reservationApi.patch<UniStayApiResponse<{ visitRequest: VisitRequest }>>(
+  const response = await api.patch<UniStayApiResponse<{ visitRequest: VisitRequest }>>(
     `/visit-requests/${id}/approve`,
   );
   return response.data;
 }
 
 export async function rejectVisitRequest(id: string, payload: RejectVisitPayload) {
-  const response = await reservationApi.patch<UniStayApiResponse<{ visitRequest: VisitRequest }>>(
+  const response = await api.patch<UniStayApiResponse<{ visitRequest: VisitRequest }>>(
     `/visit-requests/${id}/reject`,
     payload,
   );
@@ -44,7 +44,7 @@ export async function rejectVisitRequest(id: string, payload: RejectVisitPayload
 }
 
 export async function cancelVisitRequest(id: string) {
-  const response = await reservationApi.patch<UniStayApiResponse<{ visitRequest: VisitRequest }>>(
+  const response = await api.patch<UniStayApiResponse<{ visitRequest: VisitRequest }>>(
     `/visit-requests/${id}/cancel`,
   );
   return response.data;
