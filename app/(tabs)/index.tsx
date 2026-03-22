@@ -15,8 +15,91 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
 import { useSaveBoarding } from '@/hooks/useSaveBoarding';
 import { searchBoardings, getMyListings } from '@/lib/boarding';
+import { getMyReservations } from '@/lib/reservation';
 import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
+import type { Reservation } from '@/types/reservation.types';
+
+// ─── Active Reservation Card ───────────────────────────────────────────────────
+const ACTIVE_RES_BG: Record<string, string> = {
+  ACTIVE: '#D1FAE5',
+  PENDING: '#FEF3C7',
+};
+const ACTIVE_RES_COLOR: Record<string, string> = {
+  ACTIVE: COLORS.green,
+  PENDING: COLORS.orange,
+};
+
+function ActiveReservationCard({ reservation }: { reservation: Reservation }) {
+  const bg = ACTIVE_RES_BG[reservation.status] ?? '#EBF0FF';
+  const color = ACTIVE_RES_COLOR[reservation.status] ?? COLORS.primary;
+
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  return (
+    <TouchableOpacity
+      style={styles.activeResCard}
+      activeOpacity={0.85}
+      onPress={() => router.push(`/reservations/${reservation.id}` as never)}
+    >
+      <View style={styles.activeResTop}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={styles.activeResTitle} numberOfLines={1}>
+            {reservation.boarding.title}
+          </Text>
+          <View style={styles.activeResLocation}>
+            <Ionicons name="location-outline" size={12} color={COLORS.gray} />
+            <Text style={styles.activeResLocationText}>
+              {reservation.boarding.city}, {reservation.boarding.district}
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.activeResBadge, { backgroundColor: bg }]}>
+          <Text style={[styles.activeResBadgeText, { color }]}>
+            {reservation.status}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.activeResDivider} />
+
+      <View style={styles.activeResBottom}>
+        <View style={styles.activeResDetail}>
+          <Ionicons name="calendar-outline" size={13} color={COLORS.primary} />
+          <Text style={styles.activeResDetailText}>
+            Move-in: {formatDate(reservation.moveInDate)}
+          </Text>
+        </View>
+        <View style={styles.activeResDetail}>
+          <Ionicons name="cash-outline" size={13} color={COLORS.primary} />
+          <Text style={styles.activeResDetailText}>
+            {reservation.rentSnapshot
+              ? `LKR ${reservation.rentSnapshot.toLocaleString()}/mo`
+              : '—'}
+          </Text>
+        </View>
+      </View>
+
+      {reservation.status === 'PENDING' && reservation.expiresAt && (
+        <View style={styles.activeResExpiry}>
+          <Ionicons name="time-outline" size={12} color={COLORS.orange} />
+          <Text style={styles.activeResExpiryText}>
+            Expires: {formatDate(reservation.expiresAt)}
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.activeResArrow}>
+        <Text style={styles.activeResViewText}>View Details</Text>
+        <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 // ─── Boarding Card ─────────────────────────────────────────────────────────────
 function BoardingCard({ item, showOccupancy }: { item: Boarding; showOccupancy?: boolean }) {
@@ -77,6 +160,7 @@ function BoardingCard({ item, showOccupancy }: { item: Boarding; showOccupancy?:
 function StudentHome({ firstName }: { firstName: string }) {
   const [recommended, setRecommended] = useState<Boarding[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeReservation, setActiveReservation] = useState<Reservation | null>(null);
 
   useEffect(() => {
     searchBoardings({ size: 4 })
@@ -84,6 +168,18 @@ function StudentHome({ firstName }: { firstName: string }) {
       .catch(() => setRecommended([]))
       .finally(() => setIsLoading(false));
   }, []);
+
+  useFocusEffect(useCallback(() => {
+    getMyReservations()
+      .then((r) => {
+        const reservations = r.data.reservations;
+        const active = reservations.find((res) => res.status === 'ACTIVE')
+          ?? reservations.find((res) => res.status === 'PENDING')
+          ?? null;
+        setActiveReservation(active);
+      })
+      .catch(() => setActiveReservation(null));
+  }, []));
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
@@ -111,6 +207,21 @@ function StudentHome({ firstName }: { firstName: string }) {
         <Text style={styles.searchPlaceholder}>Search boardings...</Text>
         <Ionicons name="options-outline" size={18} color={COLORS.gray} />
       </TouchableOpacity>
+
+      {/* Active/Pending Reservation Card */}
+      {activeReservation && (
+        <View style={styles.activeResSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              {activeReservation.status === 'ACTIVE' ? 'Your Current Home' : 'Pending Application'}
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/reservations' as never)}>
+              <Text style={styles.viewAll}>All reservations</Text>
+            </TouchableOpacity>
+          </View>
+          <ActiveReservationCard reservation={activeReservation} />
+        </View>
+      )}
 
       {/* Recommended for You */}
       <View style={styles.sectionHeader}>
@@ -522,4 +633,33 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
+
+  // Active Reservation Card
+  activeResSection: { marginBottom: 4 },
+  activeResCard: {
+    marginHorizontal: 20,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
+    gap: 10,
+  },
+  activeResTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  activeResTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
+  activeResLocation: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  activeResLocationText: { fontSize: 12, color: COLORS.textSecondary },
+  activeResBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
+  activeResBadgeText: { fontSize: 11, fontWeight: '800' },
+  activeResDivider: { height: 1, backgroundColor: COLORS.grayLight },
+  activeResBottom: { flexDirection: 'row', gap: 16 },
+  activeResDetail: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  activeResDetailText: { fontSize: 12, color: COLORS.textSecondary },
+  activeResExpiry: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  activeResExpiryText: { fontSize: 11, color: COLORS.orange, fontWeight: '600' },
+  activeResArrow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3 },
+  activeResViewText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
 });
