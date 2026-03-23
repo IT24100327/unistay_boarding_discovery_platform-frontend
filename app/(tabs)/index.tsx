@@ -27,6 +27,7 @@ import type { DetailedPayment } from '@/types/payment.types';
 const SCREEN_W = Dimensions.get('window').width;
 const STAT_CARD_W = (SCREEN_W - 40 - 10) / 2;    // 2 cols: padding 20×2, 1 gap
 const MANAGE_CARD_W = (SCREEN_W - 40 - 20) / 3;  // 3 cols: padding 20×2, 2 gaps
+const STU_MANAGE_CARD_W = (SCREEN_W - 40 - 10) / 2; // student manage cards: 2 per row
 
 // ─── Active Reservation Card ───────────────────────────────────────────────────
 const ACTIVE_RES_BG: Record<string, string> = {
@@ -314,6 +315,56 @@ function UpcomingPaymentCard({
   );
 }
 
+// ─── Current Home Hero Card ────────────────────────────────────────────────────
+function CurrentHomeHeroCard({ reservation }: { reservation: Reservation }) {
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  return (
+    <TouchableOpacity
+      style={styles.heroCard}
+      activeOpacity={0.9}
+      onPress={() => router.push(`/reservations/${reservation.id}` as never)}
+    >
+      <View style={styles.heroCardTop}>
+        <View style={styles.heroCardIconBg}>
+          <Ionicons name="home" size={20} color={COLORS.primary} />
+        </View>
+        <View style={[styles.activeResBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+          <Text style={[styles.activeResBadgeText, { color: COLORS.white }]}>ACTIVE</Text>
+        </View>
+      </View>
+      <Text style={styles.heroCardTitle} numberOfLines={2}>{reservation.boarding.title}</Text>
+      <View style={styles.heroCardLocation}>
+        <Ionicons name="location-outline" size={13} color="rgba(255,255,255,0.8)" />
+        <Text style={styles.heroCardLocationText}>
+          {reservation.boarding.city}, {reservation.boarding.district}
+        </Text>
+      </View>
+      <View style={styles.heroCardDivider} />
+      <View style={styles.heroCardDetails}>
+        <View style={styles.heroCardDetail}>
+          <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.8)" />
+          <Text style={styles.heroCardDetailText}>Since {formatDate(reservation.moveInDate)}</Text>
+        </View>
+        <View style={styles.heroCardDetail}>
+          <Ionicons name="cash-outline" size={14} color="rgba(255,255,255,0.8)" />
+          <Text style={styles.heroCardDetailText}>
+            {reservation.rentSnapshot ? `LKR ${reservation.rentSnapshot.toLocaleString()}/mo` : '—'}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.heroCardFooter}>
+        <Text style={styles.heroCardViewText}>View Details</Text>
+        <Ionicons name="chevron-forward" size={16} color={COLORS.white} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Student View ──────────────────────────────────────────────────────────────
 function StudentHome({ firstName }: { firstName: string }) {
   const [recommended, setRecommended] = useState<Boarding[]>([]);
@@ -383,18 +434,7 @@ function StudentHome({ firstName }: { firstName: string }) {
         </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
-      <TouchableOpacity
-        style={styles.searchBar}
-        activeOpacity={0.8}
-        onPress={() => router.push('/(tabs)/search' as never)}
-      >
-        <Ionicons name="search-outline" size={18} color={COLORS.gray} />
-        <Text style={styles.searchPlaceholder}>Search boardings...</Text>
-        <Ionicons name="options-outline" size={18} color={COLORS.gray} />
-      </TouchableOpacity>
-
-      {/* Active/Pending Reservation Card */}
+      {/* Active Reservation — hero card when ACTIVE, standard card when PENDING */}
       {activeReservation && (
         <View style={styles.activeResSection}>
           <View style={styles.sectionHeader}>
@@ -405,9 +445,58 @@ function StudentHome({ firstName }: { firstName: string }) {
               <Text style={styles.viewAll}>All reservations</Text>
             </TouchableOpacity>
           </View>
-          <ActiveReservationCard reservation={activeReservation} />
+          {activeReservation.status === 'ACTIVE' ? (
+            <CurrentHomeHeroCard reservation={activeReservation} />
+          ) : (
+            <ActiveReservationCard reservation={activeReservation} />
+          )}
         </View>
       )}
+
+      {/* Quick Manage Cards — between "Your Current Home" and "Upcoming Payment" */}
+      <View style={styles.stuManageSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+        </View>
+        <View style={styles.stuManageGrid}>
+          <TouchableOpacity
+            style={styles.stuManageCard}
+            onPress={() => router.push('/visits' as never)}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="eye-outline" size={22} color={COLORS.orange} />
+            </View>
+            <Text style={styles.quickActionLabel}>My Visits</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.stuManageCard}
+            onPress={() => router.push('/reservations' as never)}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
+              <Ionicons name="calendar-outline" size={22} color={COLORS.green} />
+            </View>
+            <Text style={styles.quickActionLabel}>My Reservations</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.stuManageCard}
+            onPress={() => router.push('/payments' as never)}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#EBF0FF' }]}>
+              <Ionicons name="card-outline" size={22} color={COLORS.primary} />
+            </View>
+            <Text style={styles.quickActionLabel}>My Payments</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.stuManageCard}
+            onPress={() => router.push('/(tabs)/search' as never)}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#FDF4FF' }]}>
+              <Ionicons name="search-outline" size={22} color="#9333EA" />
+            </View>
+            <Text style={styles.quickActionLabel}>Find Boarding</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Upcoming Payment */}
       {upcomingPeriod && activeReservation?.status === 'ACTIVE' && (
@@ -442,7 +531,7 @@ function StudentHome({ firstName }: { firstName: string }) {
       )}
 
       {/* Recommended for You */}
-      <View style={styles.sectionHeader}>
+      <View style={[styles.sectionHeader, { marginTop: 4 }]}>
         <Text style={styles.sectionTitle}>Recommended for You</Text>
         <TouchableOpacity onPress={() => router.push('/(tabs)/search' as never)}>
           <Text style={styles.viewAll}>See all</Text>
@@ -477,37 +566,6 @@ function StudentHome({ firstName }: { firstName: string }) {
         <Ionicons name="compass-outline" size={18} color={COLORS.white} />
         <Text style={styles.exploreBtnText}>Explore All Boardings</Text>
       </TouchableOpacity>
-
-      {/* Quick Links */}
-      <View style={styles.quickActionsGrid}>
-        <TouchableOpacity
-          style={styles.quickActionCard}
-          onPress={() => router.push('/visits' as never)}
-        >
-          <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
-            <Ionicons name="eye-outline" size={22} color={COLORS.orange} />
-          </View>
-          <Text style={styles.quickActionLabel}>My Visits</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.quickActionCard}
-          onPress={() => router.push('/reservations' as never)}
-        >
-          <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
-            <Ionicons name="calendar-outline" size={22} color={COLORS.green} />
-          </View>
-          <Text style={styles.quickActionLabel}>My Reservations</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.quickActionCard}
-          onPress={() => router.push('/payments' as never)}
-        >
-          <View style={[styles.quickActionIcon, { backgroundColor: '#EBF0FF' }]}>
-            <Ionicons name="card-outline" size={22} color={COLORS.primary} />
-          </View>
-          <Text style={styles.quickActionLabel}>My Payments</Text>
-        </TouchableOpacity>
-      </View>
 
       <View style={{ height: 28 }} />
     </ScrollView>
@@ -817,6 +875,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     marginBottom: 12,
+    marginTop: 4,
   },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
   viewAll: { fontSize: 13, color: COLORS.primary, fontWeight: '500' },
@@ -1052,7 +1111,7 @@ const styles = StyleSheet.create({
   paymentOverviewCount: { fontSize: 11, color: COLORS.textSecondary },
 
   // Active Reservation Card
-  activeResSection: { marginBottom: 4 },
+  activeResSection: { marginBottom: 20 },
   activeResCard: {
     marginHorizontal: 20,
     backgroundColor: COLORS.white,
@@ -1081,7 +1140,7 @@ const styles = StyleSheet.create({
   activeResViewText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
 
   // Upcoming Payment Card
-  upcomingPaySection: { marginBottom: 4 },
+  upcomingPaySection: { marginBottom: 20 },
   upcomingPayCard: {
     marginHorizontal: 20,
     backgroundColor: COLORS.white,
@@ -1141,4 +1200,58 @@ const styles = StyleSheet.create({
   recentPaymentAmount: { fontSize: 14, fontWeight: '800', color: COLORS.text },
   recentPaymentBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   recentPaymentStatus: { fontSize: 10, fontWeight: '700' },
+
+  // Current Home Hero Card
+  heroCard: {
+    marginHorizontal: 20,
+    backgroundColor: COLORS.primary,
+    borderRadius: 18,
+    padding: 18,
+    gap: 8,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  heroCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  heroCardIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroCardTitle: { fontSize: 20, fontWeight: '800', color: COLORS.white, marginTop: 2 },
+  heroCardLocation: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  heroCardLocationText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
+  heroCardDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 2 },
+  heroCardDetails: { flexDirection: 'row', gap: 20 },
+  heroCardDetail: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  heroCardDetailText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
+  heroCardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 2 },
+  heroCardViewText: { fontSize: 13, color: COLORS.white, fontWeight: '700' },
+
+  // Student Manage Grid (2 per row)
+  stuManageSection: { marginBottom: 20 },
+  stuManageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  stuManageCard: {
+    width: STU_MANAGE_CARD_W,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 14,
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
 });
