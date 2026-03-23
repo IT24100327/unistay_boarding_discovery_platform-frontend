@@ -1,25 +1,25 @@
 {
   "expo": {
-    "name": "UniBoard",
-    "slug": "uniboard",
+    "name": "UniStay",
+    "slug": "unistay",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "uniboard",
+    "scheme": "unistay",
     "userInterfaceStyle": "light",
     "splash": {
       "backgroundColor": "#4A7BF7"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.uniboard.app"
+      "bundleIdentifier": "com.unistay.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4A7BF7"
       },
-      "package": "com.uniboard.app"
+      "package": "com.unistay.app"
     },
     "web": {
       "bundler": "metro",

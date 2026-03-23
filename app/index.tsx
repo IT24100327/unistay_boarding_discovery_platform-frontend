@@ -41,7 +41,7 @@ export default function Index() {
         <View style={styles.logoContainer}>
           <Text style={styles.logoIcon}>🎓</Text>
         </View>
-        <Text style={styles.title}>UniBoard</Text>
+        <Text style={styles.title}>UniStay</Text>
         <Text style={styles.subtitle}>Find your perfect student home</Text>
         <Animated.View style={[styles.spinner, { transform: [{ rotate: spin }] }]} />
         <Text style={styles.loading}>LOADING</Text>

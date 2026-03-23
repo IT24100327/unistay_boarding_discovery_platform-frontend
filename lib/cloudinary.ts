@@ -7,7 +7,7 @@ export interface CloudinaryUploadResult {
 
 export async function uploadImage(
   uri: string,
-  folder = 'uniboard'
+  folder = 'unistay'
 ): Promise<CloudinaryUploadResult> {
   const formData = new FormData();
   const filename = uri.split('/').pop() ?? 'upload.jpg';

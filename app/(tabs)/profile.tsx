@@ -201,7 +201,7 @@ export default function ProfileScreen() {
           {secondaryItems.map(renderMenuItem)}
         </View>
 
-        <Text style={styles.version}>UniBoard v{APP_VERSION}</Text>
+        <Text style={styles.version}>UniStay v{APP_VERSION}</Text>
       </ScrollView>
     </SafeAreaView>
   );

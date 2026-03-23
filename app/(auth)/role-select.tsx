@@ -34,7 +34,7 @@ export default function RoleSelectScreen() {
         <View style={styles.logo}>
           <Text style={styles.logoIcon}>🎓</Text>
         </View>
-        <Text style={styles.logoTitle}>UniBoard</Text>
+        <Text style={styles.logoTitle}>UniStay</Text>
       </View>
 
       <Text style={styles.heading}>I am a...</Text>

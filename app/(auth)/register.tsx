@@ -90,7 +90,7 @@ export default function RegisterScreen() {
             <Badge label="Student" variant="primary" pill />
           </View>
           <Text style={styles.subheading}>
-            Join UniBoard to discover your perfect student home.
+            Join UniStay to discover your perfect student home.
           </Text>
 
           <View style={styles.nameRow}>
