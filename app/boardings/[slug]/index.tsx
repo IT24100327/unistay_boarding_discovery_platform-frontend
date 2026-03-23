@@ -9,6 +9,7 @@ import {
   Dimensions,
   FlatList,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,10 +18,11 @@ import { useAuthStore } from '@/store/auth.store';
 import { getBoardingBySlug, getBoardingReviews } from '@/lib/boarding';
 import { useSaveBoarding } from '@/hooks/useSaveBoarding';
 import { COLORS } from '@/lib/constants';
-import type { Boarding, BoardingReview } from '@/types/boarding.types';
+import type { Boarding, BoardingReview, AmenityName } from '@/types/boarding.types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const MAX_DESCRIPTION_PREVIEW_LENGTH = 120;
+const MAX_DESCRIPTION_PREVIEW_LENGTH = 200;
+const FOOTER_HEIGHT = 74;
 
 const TYPE_LABELS: Record<string, string> = {
   SINGLE_ROOM: 'Single Room',
@@ -35,6 +37,23 @@ const GENDER_LABELS: Record<string, string> = {
   ANY: 'Any Gender',
 };
 
+const AMENITY_META: Record<AmenityName, { icon: string; label: string }> = {
+  WIFI: { icon: 'wifi-outline', label: 'WiFi' },
+  PARKING: { icon: 'car-outline', label: 'Parking' },
+  AIR_CONDITIONING: { icon: 'snow-outline', label: 'AC' },
+  HOT_WATER: { icon: 'water-outline', label: 'Hot Water' },
+  SECURITY: { icon: 'shield-checkmark-outline', label: 'Security' },
+  KITCHEN: { icon: 'restaurant-outline', label: 'Kitchen' },
+  LAUNDRY: { icon: 'shirt-outline', label: 'Laundry' },
+  GENERATOR: { icon: 'flash-outline', label: 'Generator' },
+  GYM: { icon: 'barbell-outline', label: 'Gym' },
+  SWIMMING_POOL: { icon: 'water-outline', label: 'Swimming Pool' },
+  STUDY_ROOM: { icon: 'book-outline', label: 'Study Room' },
+  COMMON_AREA: { icon: 'people-outline', label: 'Common Area' },
+  BALCONY: { icon: 'home-outline', label: 'Balcony' },
+  WATER_TANK: { icon: 'water-outline', label: 'Water Tank' },
+};
+
 function StarRow({ rating }: { rating: number }) {
   return (
     <View style={{ flexDirection: 'row', gap: 2 }}>
@@ -42,19 +61,10 @@ function StarRow({ rating }: { rating: number }) {
         <Ionicons
           key={s}
           name={s <= Math.round(rating) ? 'star' : 'star-outline'}
-          size={14}
+          size={13}
           color="#F59E0B"
         />
       ))}
-    </View>
-  );
-}
-
-function AmenityRow({ icon, label, active }: { icon: string; label: string; active: boolean }) {
-  return (
-    <View style={[styles.amenityItem, !active && styles.amenityItemInactive]}>
-      <Ionicons name={icon as never} size={20} color={active ? COLORS.primary : COLORS.grayBorder} />
-      <Text style={[styles.amenityLabel, !active && styles.amenityLabelInactive]}>{label}</Text>
     </View>
   );
 }
@@ -109,9 +119,11 @@ export default function BoardingDetailsScreen() {
     );
   }
 
+  const availableAmenities = boarding.amenities.filter((a) => a.name in AMENITY_META);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Image Carousel */}
         <View style={styles.carouselContainer}>
           <FlatList
@@ -134,7 +146,7 @@ export default function BoardingDetailsScreen() {
             )}
             ListEmptyComponent={
               <View style={[styles.carouselImage, styles.carouselPlaceholder]}>
-                <Ionicons name="home-outline" size={48} color={COLORS.gray} />
+                <Ionicons name="home-outline" size={56} color={COLORS.gray} />
               </View>
             }
           />
@@ -156,170 +168,261 @@ export default function BoardingDetailsScreen() {
               </TouchableOpacity>
               {!isOwner && (
                 <TouchableOpacity style={styles.carouselBtn} onPress={toggleSave}>
-                  <Ionicons name={saved ? 'heart' : 'heart-outline'} size={20} color={saved ? COLORS.red : COLORS.white} />
+                  <Ionicons
+                    name={saved ? 'heart' : 'heart-outline'}
+                    size={20}
+                    color={saved ? '#FF6B6B' : COLORS.white}
+                  />
                 </TouchableOpacity>
               )}
             </View>
           </View>
+          {/* Image count badge */}
+          {boarding.images.length > 1 && (
+            <TouchableOpacity
+              style={styles.imageCountBadge}
+              onPress={() => router.push(`/boardings/${slug}/gallery` as never)}
+            >
+              <Ionicons name="images-outline" size={12} color={COLORS.white} />
+              <Text style={styles.imageCountText}>{boarding.images.length} photos</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.content}>
-          {/* Basic Info */}
-          <Text style={styles.title}>{boarding.title}</Text>
-          <View style={styles.addressRow}>
-            <Ionicons name="location-outline" size={14} color={COLORS.gray} />
-            <Text style={styles.addressText}>{boarding.address}, {boarding.city}</Text>
-            <TouchableOpacity onPress={() => router.push(`/explore/map` as never)}>
-              <Text style={styles.viewOnMap}>View on Map</Text>
-            </TouchableOpacity>
+          {/* ── Title + Monthly Rent (top of hierarchy) ── */}
+          <View style={styles.titleRentRow}>
+            <Text style={styles.title} numberOfLines={2}>{boarding.title}</Text>
+            <View style={styles.rentBadge}>
+              <Text style={styles.rentAmount}>
+                LKR {boarding.monthlyRent.toLocaleString()}
+              </Text>
+              <Text style={styles.rentPer}>/mo</Text>
+            </View>
+          </View>
+
+          {/* Location */}
+          <View style={styles.locationRow}>
+            <Ionicons name="location-outline" size={15} color={COLORS.primary} />
+            <Text style={styles.locationText}>{boarding.address}, {boarding.city}</Text>
           </View>
           {boarding.nearUniversity && (
-            <Text style={styles.distanceText}>
-              Near {boarding.nearUniversity}
-            </Text>
+            <View style={styles.uniRow}>
+              <Ionicons name="school-outline" size={14} color={COLORS.textSecondary} />
+              <Text style={styles.uniText}>Near {boarding.nearUniversity}</Text>
+            </View>
           )}
-          <View style={styles.ownerRow}>
-            <View style={styles.ownerAvatar}>
-              <Text style={styles.ownerAvatarText}>{boarding.owner.firstName.charAt(0)}</Text>
-            </View>
-            <Text style={styles.ownerName}>{boarding.owner.firstName} {boarding.owner.lastName}</Text>
-          </View>
 
-          {/* Divider */}
-          <View style={styles.divider} />
-
-          {/* Pricing */}
-          <Text style={styles.sectionTitle}>Pricing</Text>
-          <View style={styles.pricingRow}>
-            <View style={styles.pricingItem}>
-              <Text style={styles.pricingValue}>
-                {boarding.monthlyRent ? `LKR ${boarding.monthlyRent.toLocaleString()}` : '—'}
-              </Text>
-              <Text style={styles.pricingLabel}>Monthly Rent</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Details */}
-          <Text style={styles.sectionTitle}>Details</Text>
-          <View style={styles.detailsRow}>
+          {/* Quick badges row */}
+          <View style={styles.badgesRow}>
             <View style={styles.badge}>
+              <Ionicons name="home-outline" size={12} color={COLORS.primary} />
               <Text style={styles.badgeText}>{TYPE_LABELS[boarding.boardingType]}</Text>
             </View>
             <View style={styles.badge}>
+              <Ionicons name="person-outline" size={12} color={COLORS.primary} />
               <Text style={styles.badgeText}>{GENDER_LABELS[boarding.genderPref]}</Text>
             </View>
             <View style={[styles.badge, isAvailable ? styles.badgeAvailable : styles.badgeFull]}>
+              <Ionicons
+                name={isAvailable ? 'checkmark-circle-outline' : 'close-circle-outline'}
+                size={12}
+                color={isAvailable ? COLORS.green : COLORS.red}
+              />
               <Text style={[styles.badgeText, isAvailable ? styles.badgeAvailableText : styles.badgeFullText]}>
                 {isAvailable ? 'Available' : 'Full'}
               </Text>
             </View>
           </View>
-          <Text style={styles.occupancyText}>
-            Occupancy: {boarding.currentOccupants} / {boarding.maxOccupants} occupied
-          </Text>
 
-          <View style={styles.divider} />
-
-          {/* Amenities */}
-          <Text style={styles.sectionTitle}>Amenities</Text>
-          <View style={styles.amenitiesGrid}>
-            {[
-              { name: 'WIFI', icon: 'wifi-outline', label: 'WiFi' },
-              { name: 'PARKING', icon: 'car-outline', label: 'Parking' },
-              { name: 'AIR_CONDITIONING', icon: 'snow-outline', label: 'AC' },
-              { name: 'HOT_WATER', icon: 'water-outline', label: 'Hot Water' },
-              { name: 'SECURITY', icon: 'shield-checkmark-outline', label: 'Security' },
-              { name: 'KITCHEN', icon: 'restaurant-outline', label: 'Kitchen' },
-              { name: 'LAUNDRY', icon: 'shirt-outline', label: 'Laundry' },
-              { name: 'GENERATOR', icon: 'flash-outline', label: 'Generator' },
-            ].map(({ name, icon, label }) => (
-              <AmenityRow
-                key={name}
-                icon={icon}
-                label={label}
-                active={boarding.amenities.some((a) => a.name === name)}
+          {/* Occupancy bar */}
+          <View style={styles.occupancyCard}>
+            <View style={styles.occupancyLabelRow}>
+              <Text style={styles.occupancyLabel}>Occupancy</Text>
+              <Text style={styles.occupancyCount}>
+                {boarding.currentOccupants} / {boarding.maxOccupants} occupied
+              </Text>
+            </View>
+            <View style={styles.occupancyBarTrack}>
+              <View
+                style={[
+                  styles.occupancyBarFill,
+                  {
+                    width: `${Math.min(
+                      100,
+                      (boarding.currentOccupants / boarding.maxOccupants) * 100,
+                    )}%` as never,
+                    backgroundColor: isAvailable ? COLORS.primary : COLORS.red,
+                  },
+                ]}
               />
-            ))}
+            </View>
           </View>
 
           <View style={styles.divider} />
 
-          {/* Description */}
-          <Text style={styles.sectionTitle}>Description</Text>
-          <Text style={styles.descriptionText} numberOfLines={descExpanded ? undefined : 4}>
+          {/* ── Description (higher in hierarchy) ── */}
+          <Text style={styles.sectionTitle}>About This Place</Text>
+          <Text
+            style={styles.descriptionText}
+            numberOfLines={descExpanded ? undefined : 4}
+          >
             {boarding.description}
           </Text>
           {boarding.description.length > MAX_DESCRIPTION_PREVIEW_LENGTH && (
-            <TouchableOpacity onPress={() => setDescExpanded((v) => !v)}>
+            <TouchableOpacity onPress={() => setDescExpanded((v) => !v)} style={styles.expandBtn}>
               <Text style={styles.expandLink}>{descExpanded ? 'Show less' : 'Read more'}</Text>
+              <Ionicons
+                name={descExpanded ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={COLORS.primary}
+              />
             </TouchableOpacity>
           )}
 
           <View style={styles.divider} />
 
-          {/* House Rules */}
-          {boarding.rules.length > 0 && (
+          {/* ── Amenities (available only) ── */}
+          {availableAmenities.length > 0 && (
             <>
-              <Text style={styles.sectionTitle}>House Rules</Text>
-              {boarding.rules.map((ruleItem) => (
-                <View key={ruleItem.id} style={styles.ruleItem}>
-                  <Ionicons name="ellipse" size={6} color={COLORS.primary} />
-                  <Text style={styles.ruleText}>{ruleItem.rule}</Text>
-                </View>
-              ))}
+              <Text style={styles.sectionTitle}>Amenities</Text>
+              <View style={styles.amenitiesGrid}>
+                {availableAmenities.map((amenity) => {
+                  const meta = AMENITY_META[amenity.name];
+                  return (
+                    <View key={amenity.id} style={styles.amenityChip}>
+                      <Ionicons name={meta.icon as never} size={16} color={COLORS.primary} />
+                      <Text style={styles.amenityChipText}>{meta.label}</Text>
+                    </View>
+                  );
+                })}
+              </View>
               <View style={styles.divider} />
             </>
           )}
 
-          {/* Location */}
+          {/* ── House Rules ── */}
+          {boarding.rules.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>House Rules</Text>
+              <View style={styles.rulesCard}>
+                {boarding.rules.map((ruleItem, idx) => (
+                  <View
+                    key={ruleItem.id}
+                    style={[
+                      styles.ruleItem,
+                      idx < boarding.rules.length - 1 && styles.ruleItemBorder,
+                    ]}
+                  >
+                    <View style={styles.ruleDot} />
+                    <Text style={styles.ruleText}>{ruleItem.rule}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.divider} />
+            </>
+          )}
+
+          {/* ── Location ── */}
           <Text style={styles.sectionTitle}>Location</Text>
           <TouchableOpacity
-            style={styles.mapPlaceholder}
+            style={styles.mapCard}
             onPress={() => router.push('/explore/map' as never)}
+            activeOpacity={0.85}
           >
-            <Ionicons name="map-outline" size={36} color={COLORS.gray} />
-            <Text style={styles.mapPlaceholderText}>{boarding.address}, {boarding.city}</Text>
-            <Text style={styles.mapPlaceholderSub}>Tap to view on map</Text>
+            <View style={styles.mapIconWrap}>
+              <Ionicons name="map-outline" size={28} color={COLORS.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.mapCardTitle}>{boarding.city}, {boarding.district}</Text>
+              <Text style={styles.mapCardSub}>{boarding.address}</Text>
+            </View>
+            <View style={styles.mapCardArrow}>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+            </View>
           </TouchableOpacity>
 
           <View style={styles.divider} />
 
-          {/* Reviews */}
+          {/* ── Owner Info ── */}
+          <Text style={styles.sectionTitle}>Listed By</Text>
+          <View style={styles.ownerCard}>
+            <View style={styles.ownerAvatar}>
+              <Text style={styles.ownerAvatarText}>
+                {boarding.owner.firstName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.ownerName}>
+                {boarding.owner.firstName} {boarding.owner.lastName}
+              </Text>
+              <Text style={styles.ownerRole}>Property Owner</Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* ── Reviews ── */}
           <View style={styles.reviewsHeader}>
             <Text style={styles.sectionTitle}>Reviews</Text>
+            <TouchableOpacity onPress={() => router.push(`/boardings/${slug}/reviews` as never)}>
+              <Text style={styles.seeAllLink}>See all</Text>
+            </TouchableOpacity>
           </View>
-          {reviews.slice(0, 2).map((review) => (
-            <View key={review.id} style={styles.reviewCard}>
-              <View style={styles.reviewHeader}>
-                <View style={styles.reviewAvatar}>
-                  <Text style={styles.reviewAvatarText}>{review.reviewerName.charAt(0)}</Text>
+          {reviews.length === 0 ? (
+            <Text style={styles.noReviewsText}>No reviews yet.</Text>
+          ) : (
+            reviews.slice(0, 2).map((review) => (
+              <View key={review.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <View style={styles.reviewAvatar}>
+                    <Text style={styles.reviewAvatarText}>
+                      {review.reviewerName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.reviewerName}>{review.reviewerName}</Text>
+                    <StarRow rating={review.rating} />
+                  </View>
+                  <Text style={styles.reviewDate}>
+                    {new Date(review.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.reviewerName}>{review.reviewerName}</Text>
-                  <StarRow rating={review.rating} />
-                </View>
-                <Text style={styles.reviewDate}>
-                  {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                </Text>
+                <Text style={styles.reviewComment}>{review.comment}</Text>
               </View>
-              <Text style={styles.reviewComment}>{review.comment}</Text>
-            </View>
-          ))}
-          <TouchableOpacity
-            style={styles.seeAllReviews}
-            onPress={() => router.push(`/boardings/${slug}/reviews` as never)}
-          >
-            <Text style={styles.seeAllReviewsText}>See All Reviews</Text>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
-          </TouchableOpacity>
+            ))
+          )}
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Sticky Footer */}
+      {/* ── Floating Action Buttons ── */}
+      <View style={styles.fabContainer}>
+        <TouchableOpacity
+          style={[styles.fab, styles.fabSecondary]}
+          onPress={() => router.push('/explore/map' as never)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="map-outline" size={20} color={COLORS.primary} />
+          <Text style={styles.fabSecondaryText}>Map</Text>
+        </TouchableOpacity>
+        {!isOwnListing && (
+          <TouchableOpacity
+            style={[styles.fab, styles.fabPrimary]}
+            onPress={() =>
+              Alert.alert('Coming Soon', 'Contact Owner feature will be available soon!')
+            }
+            activeOpacity={0.85}
+          >
+            <Ionicons name="call-outline" size={20} color={COLORS.white} />
+            <Text style={styles.fabPrimaryText}>Contact Owner</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* ── Sticky Footer ── */}
       <View style={styles.footer}>
         {isOwnListing ? (
           <>
@@ -327,12 +430,14 @@ export default function BoardingDetailsScreen() {
               style={[styles.footerBtn, styles.footerBtnSecondary]}
               onPress={() => router.push(`/my-listings/${boarding.id}/analytics` as never)}
             >
-              <Text style={styles.footerBtnSecondaryText}>View Analytics</Text>
+              <Ionicons name="bar-chart-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.footerBtnSecondaryText}>Analytics</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.footerBtn, styles.footerBtnPrimary]}
               onPress={() => router.push(`/my-listings/${boarding.id}/edit` as never)}
             >
+              <Ionicons name="create-outline" size={16} color={COLORS.white} />
               <Text style={styles.footerBtnPrimaryText}>Edit Listing</Text>
             </TouchableOpacity>
           </>
@@ -344,13 +449,11 @@ export default function BoardingDetailsScreen() {
                 onPress={() =>
                   router.push({
                     pathname: `/boardings/${slug}/schedule-visit` as never,
-                    params: {
-                      boardingId: boarding.id,
-                      boardingTitle: boarding.title,
-                    },
+                    params: { boardingId: boarding.id, boardingTitle: boarding.title },
                   })
                 }
               >
+                <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
                 <Text style={styles.footerBtnSecondaryText}>Schedule Visit</Text>
               </TouchableOpacity>
             )}
@@ -368,7 +471,8 @@ export default function BoardingDetailsScreen() {
                   })
                 }
               >
-                <Text style={styles.footerBtnPrimaryText}>Request Reservation</Text>
+                <Ionicons name="checkmark-circle-outline" size={16} color={COLORS.white} />
+                <Text style={styles.footerBtnPrimaryText}>Reserve Now</Text>
               </TouchableOpacity>
             )}
           </>
@@ -380,79 +484,139 @@ export default function BoardingDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { paddingBottom: 160 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   notFoundText: { fontSize: 16, color: COLORS.textSecondary, fontWeight: '600' },
-  goBackBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: COLORS.primary, borderRadius: 10 },
+  goBackBtn: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+  },
   goBackBtnText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
 
   // Carousel
   carouselContainer: { position: 'relative' },
-  carouselImage: { width: SCREEN_WIDTH, height: 280 },
+  carouselImage: { width: SCREEN_WIDTH, height: 300 },
   carouselPlaceholder: { backgroundColor: COLORS.grayLight, alignItems: 'center', justifyContent: 'center' },
-  paginationDots: { position: 'absolute', bottom: 12, alignSelf: 'center', flexDirection: 'row', gap: 6 },
+  paginationDots: {
+    position: 'absolute',
+    bottom: 14,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.5)' },
-  dotActive: { backgroundColor: COLORS.white, width: 18 },
+  dotActive: { backgroundColor: COLORS.white, width: 20 },
   carouselOverlay: {
     position: 'absolute',
-    top: 12,
-    left: 12,
-    right: 12,
+    top: 14,
+    left: 14,
+    right: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   carouselBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.42)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  imageCountBadge: {
+    position: 'absolute',
+    bottom: 14,
+    right: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  imageCountText: { fontSize: 11, color: COLORS.white, fontWeight: '600' },
 
   // Content
-  content: { padding: 20 },
-  title: { fontSize: 22, fontWeight: '800', color: COLORS.text, marginBottom: 8 },
-  addressRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4, flexWrap: 'wrap' },
-  addressText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
-  viewOnMap: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
-  distanceText: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 8 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  ratingLink: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
-  ownerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
-  ownerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  content: { paddingHorizontal: 18, paddingTop: 18 },
+
+  // Title + Rent
+  titleRentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 10,
   },
-  ownerAvatarText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
-  ownerName: { fontSize: 14, fontWeight: '500', color: COLORS.text },
+  title: { flex: 1, fontSize: 21, fontWeight: '800', color: COLORS.text, lineHeight: 28 },
+  rentBadge: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 2,
+  },
+  rentAmount: { fontSize: 16, fontWeight: '800', color: COLORS.white },
+  rentPer: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginLeft: 2 },
 
-  divider: { height: 1, backgroundColor: COLORS.grayLight, marginVertical: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text, marginBottom: 12 },
+  // Location
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
+  locationText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
+  uniRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
+  uniText: { fontSize: 12, color: COLORS.textSecondary },
 
-  // Pricing
-  pricingRow: { flexDirection: 'row', backgroundColor: COLORS.white, borderRadius: 14, padding: 16, gap: 0 },
-  pricingItem: { flex: 1, alignItems: 'center' },
-  pricingValue: { fontSize: 18, fontWeight: '800', color: COLORS.primary },
-  pricingLabel: { fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
-  pricingDivider: { width: 1, backgroundColor: COLORS.grayBorder },
-
-  // Details
-  detailsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  badge: { backgroundColor: '#EBF0FF', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  // Badges
+  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EBF0FF',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
   badgeText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
   badgeAvailable: { backgroundColor: '#D1FAE5' },
   badgeFull: { backgroundColor: '#FEE2E2' },
   badgeAvailableText: { color: COLORS.green },
   badgeFullText: { color: COLORS.red },
-  occupancyText: { fontSize: 13, color: COLORS.textSecondary },
+
+  // Occupancy
+  occupancyCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: COLORS.grayBorder,
+    marginBottom: 4,
+  },
+  occupancyLabelRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  occupancyLabel: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  occupancyCount: { fontSize: 13, color: COLORS.textSecondary },
+  occupancyBarTrack: {
+    height: 6,
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  occupancyBarFill: { height: 6, borderRadius: 4 },
+
+  divider: { height: 1, backgroundColor: COLORS.grayLight, marginVertical: 18 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text, marginBottom: 12 },
+
+  // Description
+  descriptionText: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 23 },
+  expandBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+  expandLink: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
 
   // Amenities
   amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  amenityItem: {
+  amenityChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -461,47 +625,96 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  amenityItemInactive: { backgroundColor: COLORS.grayLight },
-  amenityLabel: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
-  amenityLabelInactive: { color: COLORS.grayBorder },
+  amenityChipText: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
 
-  // Description
-  descriptionText: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 22 },
-  expandLink: { fontSize: 13, color: COLORS.primary, fontWeight: '600', marginTop: 6 },
-
-  // House rules
-  ruleItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  ruleText: { fontSize: 14, color: COLORS.textSecondary },
-
-  // Map placeholder
-  mapPlaceholder: {
-    backgroundColor: COLORS.grayLight,
-    borderRadius: 14,
-    height: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+  // House Rules
+  rulesCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.grayBorder,
   },
-  mapPlaceholderText: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '500' },
-  mapPlaceholderSub: { fontSize: 11, color: COLORS.gray },
+  ruleItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 },
+  ruleItemBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
+  ruleDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+    flexShrink: 0,
+  },
+  ruleText: { fontSize: 14, color: COLORS.textSecondary, flex: 1 },
+
+  // Map card
+  mapCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: COLORS.grayBorder,
+  },
+  mapIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#EBF0FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapCardTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: 2 },
+  mapCardSub: { fontSize: 12, color: COLORS.textSecondary },
+  mapCardArrow: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#EBF0FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Owner card
+  ownerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.grayBorder,
+  },
+  ownerAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ownerAvatarText: { color: COLORS.white, fontWeight: '800', fontSize: 18 },
+  ownerName: { fontSize: 15, fontWeight: '700', color: COLORS.text },
+  ownerRole: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
 
   // Reviews
-  reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  overallRating: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  overallRatingText: { fontSize: 15, fontWeight: '700', color: COLORS.text },
-  overallRatingCount: { fontSize: 13, color: COLORS.textSecondary },
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  seeAllLink: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
+  noReviewsText: { fontSize: 14, color: COLORS.textSecondary, fontStyle: 'italic' },
   reviewCard: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: COLORS.grayBorder,
   },
   reviewHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
   reviewAvatar: {
@@ -516,33 +729,55 @@ const styles = StyleSheet.create({
   reviewerName: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 3 },
   reviewDate: { fontSize: 11, color: COLORS.gray },
   reviewComment: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 20 },
-  seeAllReviews: {
+
+  // Floating Action Buttons
+  fabContainer: {
+    position: 'absolute',
+    bottom: FOOTER_HEIGHT + 8,
+    right: 16,
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  fab: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 12,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  seeAllReviewsText: { fontSize: 14, color: COLORS.primary, fontWeight: '600' },
+  fabPrimary: { backgroundColor: COLORS.primary },
+  fabSecondary: { backgroundColor: COLORS.white, borderWidth: 1.5, borderColor: COLORS.primary },
+  fabPrimaryText: { fontSize: 14, fontWeight: '700', color: COLORS.white },
+  fabSecondaryText: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
 
   // Footer
   footer: {
     flexDirection: 'row',
     gap: 12,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: COLORS.white,
     borderTopWidth: 1,
     borderTopColor: COLORS.grayBorder,
   },
   footerBtn: {
     flex: 1,
+    flexDirection: 'row',
     height: 50,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   },
   footerBtnPrimary: { backgroundColor: COLORS.primary },
   footerBtnSecondary: { borderWidth: 1.5, borderColor: COLORS.primary },
-  footerBtnPrimaryText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
-  footerBtnSecondaryText: { fontSize: 15, fontWeight: '700', color: COLORS.primary },
+  footerBtnPrimaryText: { fontSize: 14, fontWeight: '700', color: COLORS.white },
+  footerBtnSecondaryText: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
 });
