@@ -33,9 +33,9 @@ const BOARDING_TYPES: { label: string; value: BoardingType }[] = [
 ];
 
 const GENDER_OPTIONS: { label: string; value: GenderPreference }[] = [
-  { label: '🚹 Male Only', value: 'MALE' },
-  { label: '🚺 Female Only', value: 'FEMALE' },
-  { label: '🤝 Any Gender', value: 'ANY' },
+  { label: 'Male Only', value: 'MALE' },
+  { label: 'Female Only', value: 'FEMALE' },
+  { label: 'Any Gender', value: 'ANY' },
 ];
 
 const AMENITY_OPTIONS: { key: AmenityName; label: string; icon: string }[] = [
