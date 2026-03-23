@@ -10,6 +10,7 @@ import {
   ListRenderItem,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,105 +22,86 @@ import { searchBoardings } from '@/lib/boarding';
 import { COLORS } from '@/lib/constants';
 import type { Boarding, SortOption } from '@/types/boarding.types';
 
+const SCREEN_W = Dimensions.get('window').width;
+const CARD_W = (SCREEN_W - 16 * 2 - 10) / 2; // 2-column grid
+
 const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: 'Relevance', value: 'RELEVANCE' },
-  { label: 'Price: Low to High', value: 'PRICE_ASC' },
-  { label: 'Price: High to Low', value: 'PRICE_DESC' },
+  { label: 'Price ↑', value: 'PRICE_ASC' },
+  { label: 'Price ↓', value: 'PRICE_DESC' },
   { label: 'Newest', value: 'NEWEST' },
 ];
 
-function AmenityIcon({ name, active }: { name: string; active: boolean }) {
-  const iconMap: Record<string, string> = {
-    WIFI: 'wifi-outline',
-    PARKING: 'car-outline',
-    AIR_CONDITIONING: 'snow-outline',
-    HOT_WATER: 'water-outline',
-    SECURITY: 'shield-checkmark-outline',
-  };
-  return (
-    <Ionicons
-      name={(iconMap[name] ?? 'ellipse-outline') as never}
-      size={14}
-      color={active ? COLORS.primary : COLORS.grayBorder}
-    />
-  );
-}
+const TYPE_LABELS: Record<string, string> = {
+  SINGLE_ROOM: 'Single Room',
+  SHARED_ROOM: 'Shared Room',
+  ANNEX: 'Annex',
+  HOUSE: 'House',
+};
 
-function BoardingListCard({ item }: { item: Boarding }) {
+// ─── Boarding Card (2-column grid, image on top) ───────────────────────────────
+function BoardingCard({ item }: { item: Boarding }) {
   const { user } = useAuthStore();
   const { saved, toggleSave } = useSaveBoarding(item.id);
   const isStudent = user?.role !== 'OWNER';
   const primaryImage = item.images[0];
-
-  const typeLabel: Record<string, string> = {
-    SINGLE_ROOM: 'Single Room',
-    SHARED_ROOM: 'Shared Room',
-    ANNEX: 'Annex',
-    HOUSE: 'House',
-  };
-  const genderLabel: Record<string, string> = {
-    MALE: 'Male Only',
-    FEMALE: 'Female Only',
-    ANY: 'Any Gender',
-  };
-
-  const topAmenityNames = ['WIFI', 'PARKING', 'AIR_CONDITIONING', 'HOT_WATER', 'SECURITY'];
+  const isAvailable = item.currentOccupants < item.maxOccupants;
 
   return (
     <TouchableOpacity
-      style={styles.listCard}
-      activeOpacity={0.85}
+      style={styles.card}
+      activeOpacity={0.88}
       onPress={() => router.push(`/boardings/${item.slug}` as never)}
     >
-      <View style={styles.listCardImageContainer}>
+      {/* Image */}
+      <View style={styles.cardImageWrap}>
         {primaryImage ? (
-          <Image source={{ uri: primaryImage.url }} style={styles.listCardImage} />
+          <Image source={{ uri: primaryImage.url }} style={styles.cardImage} />
         ) : (
-          <View style={[styles.listCardImage, styles.imagePlaceholder]}>
-            <Ionicons name="home-outline" size={28} color={COLORS.gray} />
+          <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
+            <Ionicons name="home-outline" size={30} color={COLORS.gray} />
           </View>
         )}
+        {/* Availability badge */}
+        <View style={[styles.availBadge, isAvailable ? styles.availBadgeGreen : styles.availBadgeRed]}>
+          <Text style={styles.availBadgeText}>{isAvailable ? 'Available' : 'Full'}</Text>
+        </View>
+        {/* Heart button — students only */}
+        {isStudent && (
+          <TouchableOpacity
+            style={styles.heartBtn}
+            onPress={toggleSave}
+            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+          >
+            <Ionicons
+              name={saved ? 'heart' : 'heart-outline'}
+              size={18}
+              color={saved ? COLORS.red : COLORS.white}
+            />
+          </TouchableOpacity>
+        )}
       </View>
-      <View style={styles.listCardBody}>
-        <View style={styles.listCardHeader}>
-          <Text style={styles.listCardTitle} numberOfLines={1}>{item.title}</Text>
-          {isStudent && (
-            <TouchableOpacity onPress={toggleSave} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-              <Ionicons name={saved ? 'heart' : 'heart-outline'} size={20} color={saved ? COLORS.red : COLORS.gray} />
-            </TouchableOpacity>
-          )}
+
+      {/* Content */}
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+        <View style={styles.cardLocationRow}>
+          <Ionicons name="location-outline" size={11} color={COLORS.gray} />
+          <Text style={styles.cardLocation} numberOfLines={1}>{item.city}</Text>
         </View>
-        <Text style={styles.listCardAddress} numberOfLines={1}>
-          <Ionicons name="location-outline" size={11} color={COLORS.gray} /> {item.address}, {item.city}
+        <Text style={styles.cardPrice}>
+          {item.monthlyRent ? `LKR ${item.monthlyRent.toLocaleString()}` : '—'}
+          <Text style={styles.cardPriceSuffix}>/mo</Text>
         </Text>
-        <Text style={styles.listCardPrice}>
-          {item.monthlyRent
-            ? <>{`LKR ${item.monthlyRent.toLocaleString()}`}<Text style={styles.listCardPriceSuffix}>/mo</Text></>
-            : '—'}
-        </Text>
-        <View style={styles.listCardBadgeRow}>
-          <View style={styles.typeBadge}><Text style={styles.typeBadgeText}>{typeLabel[item.boardingType]}</Text></View>
-          <View style={styles.genderBadge}><Text style={styles.genderBadgeText}>{genderLabel[item.genderPref]}</Text></View>
-        </View>
-        <View style={styles.listCardFooter}>
-          <View style={styles.amenityIcons}>
-            {topAmenityNames.map((name) => (
-              <AmenityIcon
-                key={name}
-                name={name}
-                active={item.amenities.some((a) => a.name === name)}
-              />
-            ))}
-          </View>
-          {item.nearUniversity && (
-            <Text style={styles.distanceText} numberOfLines={1}>{item.nearUniversity}</Text>
-          )}
+        <View style={styles.cardTypeBadge}>
+          <Text style={styles.cardTypeBadgeText}>{TYPE_LABELS[item.boardingType] ?? item.boardingType}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 }
 
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ExploreScreen() {
   const [query, setQuery] = useState('');
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -165,7 +147,6 @@ export default function ExploreScreen() {
     }
   };
 
-  // Debounce query changes; immediate fetch on filter/sort changes
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => { fetchBoardings(); }, 300);
@@ -173,28 +154,27 @@ export default function ExploreScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, filters, sortParams]);
 
-  const activeFilterChips = useMemo(() => {
-    const chips: { key: string; label: string }[] = [];
-    if (filters.district) chips.push({ key: 'district', label: filters.district });
-    if (filters.city) chips.push({ key: 'city', label: filters.city });
-    if (filters.maxRent) chips.push({ key: 'maxRent', label: `< LKR ${filters.maxRent.toLocaleString()}` });
-    if (filters.genderPref) chips.push({ key: 'genderPref', label: filters.genderPref });
-    return chips;
+  // Count active filters for FAB / chips
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (filters.district) n++;
+    if (filters.city) n++;
+    if (filters.minRent) n++;
+    if (filters.maxRent) n++;
+    if (filters.boardingType) n++;
+    if (filters.genderPref) n++;
+    if (filters.amenities?.length) n += filters.amenities.length;
+    if (filters.nearUniversity) n++;
+    return n;
   }, [filters]);
 
-  const removeFilter = (key: string) => {
-    const newFilters = { ...filters };
-    delete (newFilters as Record<string, unknown>)[key];
-    useBoardingStore.getState().setFilters(newFilters);
-  };
-
-  const renderItem: ListRenderItem<Boarding> = ({ item }) => <BoardingListCard item={item} />;
+  const renderItem: ListRenderItem<Boarding> = ({ item }) => <BoardingCard item={item} />;
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Search Header */}
-      <View style={styles.searchHeader}>
-        <View style={styles.searchInputRow}>
+      {/* ── Search Header ── */}
+      <View style={styles.header}>
+        <View style={styles.searchRow}>
           <View style={styles.searchBar}>
             <Ionicons name="search-outline" size={18} color={COLORS.gray} />
             <TextInput
@@ -210,50 +190,52 @@ export default function ExploreScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Filter button — badge when active */}
           <TouchableOpacity
-            style={styles.iconBtn}
+            style={[styles.headerIconBtn, activeFilterCount > 0 && styles.headerIconBtnActive]}
             onPress={() => router.push('/explore/filter' as never)}
           >
-            <Ionicons name="options-outline" size={22} color={COLORS.text} />
+            <Ionicons
+              name="options-outline"
+              size={20}
+              color={activeFilterCount > 0 ? COLORS.white : COLORS.text}
+            />
+            {activeFilterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
+
+          {/* Map button */}
           <TouchableOpacity
-            style={styles.iconBtn}
+            style={styles.headerIconBtn}
             onPress={() => router.push('/explore/map' as never)}
           >
-            <Ionicons name="map-outline" size={22} color={COLORS.text} />
+            <Ionicons name="map-outline" size={20} color={COLORS.text} />
           </TouchableOpacity>
         </View>
 
-        {/* Active filter chips */}
-        {activeFilterChips.length > 0 && (
-          <View style={styles.chipsRow}>
-            {activeFilterChips.map((chip) => (
-              <TouchableOpacity key={chip.key} style={styles.chip} onPress={() => removeFilter(chip.key)}>
-                <Text style={styles.chipText}>{chip.label}</Text>
-                <Ionicons name="close" size={12} color={COLORS.primary} />
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity onPress={clearFilters}>
-              <Text style={styles.clearAll}>Clear all</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Sort + count row */}
-        <View style={styles.sortRow}>
+        {/* Sort + result count row */}
+        <View style={styles.metaRow}>
           <Text style={styles.resultCount}>
-            {isLoading ? 'Searching…' : `${total} boarding${total !== 1 ? 's' : ''} found`}
+            {isLoading ? 'Searching…' : `${total} result${total !== 1 ? 's' : ''}`}
           </Text>
           <View>
             <TouchableOpacity
               style={styles.sortBtn}
               onPress={() => setShowSortMenu((v) => !v)}
             >
-              <Ionicons name="swap-vertical-outline" size={16} color={COLORS.primary} />
+              <Ionicons name="swap-vertical-outline" size={15} color={COLORS.primary} />
               <Text style={styles.sortBtnText}>
                 {SORT_OPTIONS.find((s) => s.value === sortOption)?.label ?? 'Sort'}
               </Text>
-              <Ionicons name={showSortMenu ? 'chevron-up' : 'chevron-down'} size={14} color={COLORS.primary} />
+              <Ionicons
+                name={showSortMenu ? 'chevron-up' : 'chevron-down'}
+                size={13}
+                color={COLORS.primary}
+              />
             </TouchableOpacity>
             {showSortMenu && (
               <View style={styles.sortMenu}>
@@ -263,10 +245,14 @@ export default function ExploreScreen() {
                     style={styles.sortMenuItem}
                     onPress={() => { setSortOption(opt.value); setShowSortMenu(false); }}
                   >
-                    <Text style={[styles.sortMenuText, sortOption === opt.value && styles.sortMenuTextActive]}>
+                    <Text
+                      style={[styles.sortMenuText, sortOption === opt.value && styles.sortMenuTextActive]}
+                    >
                       {opt.label}
                     </Text>
-                    {sortOption === opt.value && <Ionicons name="checkmark" size={16} color={COLORS.primary} />}
+                    {sortOption === opt.value && (
+                      <Ionicons name="checkmark" size={15} color={COLORS.primary} />
+                    )}
                   </TouchableOpacity>
                 ))}
               </View>
@@ -275,8 +261,9 @@ export default function ExploreScreen() {
         </View>
       </View>
 
+      {/* ── List ── */}
       {isLoading && !isRefreshing ? (
-        <View style={styles.loadingContainer}>
+        <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : (
@@ -284,7 +271,9 @@ export default function ExploreScreen() {
           data={boardings}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
+          numColumns={2}
+          columnWrapperStyle={styles.columnWrapper}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={() => setShowSortMenu(false)}
           refreshControl={
@@ -299,9 +288,26 @@ export default function ExploreScreen() {
               <Ionicons name="search-outline" size={56} color={COLORS.grayBorder} />
               <Text style={styles.emptyTitle}>No boardings found</Text>
               <Text style={styles.emptySubtitle}>Try adjusting your search or filters</Text>
+              {activeFilterCount > 0 && (
+                <TouchableOpacity style={styles.emptyResetBtn} onPress={clearFilters}>
+                  <Text style={styles.emptyResetText}>Clear Filters</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
         />
+      )}
+
+      {/* ── Clear Filters FAB (visible only when filters are active) ── */}
+      {activeFilterCount > 0 && (
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.85}
+          onPress={clearFilters}
+        >
+          <Ionicons name="close-circle-outline" size={18} color={COLORS.white} />
+          <Text style={styles.fabText}>Clear Filters</Text>
+        </TouchableOpacity>
       )}
     </SafeAreaView>
   );
@@ -309,63 +315,71 @@ export default function ExploreScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // Search header
-  searchHeader: {
+  // Header
+  header: {
     backgroundColor: COLORS.white,
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 8,
+    paddingBottom: 10,
+    gap: 8,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.grayBorder,
-    gap: 8,
     zIndex: 10,
   },
-  searchInputRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.grayLight,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     gap: 8,
   },
   searchInput: { flex: 1, fontSize: 15, color: COLORS.text },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+  headerIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: COLORS.grayLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // Filter chips
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
-  chip: {
-    flexDirection: 'row',
+  headerIconBtnActive: { backgroundColor: COLORS.primary },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: COLORS.red,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#EBF0FF',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    justifyContent: 'center',
+    paddingHorizontal: 3,
   },
-  chipText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
-  clearAll: { fontSize: 12, color: COLORS.red, fontWeight: '600', marginLeft: 4 },
+  filterBadgeText: { fontSize: 10, color: COLORS.white, fontWeight: '700' },
 
-  // Sort row
-  sortRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // Meta row (result count + sort)
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   resultCount: { fontSize: 13, color: COLORS.textSecondary },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   sortBtnText: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
   sortMenu: {
     position: 'absolute',
     right: 0,
-    top: 28,
+    top: 26,
     backgroundColor: COLORS.white,
     borderRadius: 12,
     shadowColor: '#000',
@@ -373,7 +387,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 8,
-    minWidth: 180,
+    minWidth: 160,
     zIndex: 100,
   },
   sortMenuItem: {
@@ -381,49 +395,104 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.grayLight,
   },
   sortMenuText: { fontSize: 14, color: COLORS.text },
   sortMenuTextActive: { color: COLORS.primary, fontWeight: '600' },
 
-  // List
-  list: { padding: 16, gap: 12 },
+  // Grid list
+  listContent: { padding: 16, paddingBottom: 100 },
+  columnWrapper: { gap: 10, marginBottom: 10 },
 
-  // List card
-  listCard: {
+  // Card
+  card: {
+    width: CARD_W,
     backgroundColor: COLORS.white,
     borderRadius: 14,
-    flexDirection: 'row',
     overflow: 'hidden',
-    minHeight: 130,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 3,
   },
-  listCardImageContainer: { width: 110 },
-  listCardImage: { width: 110, height: 130 },
-  imagePlaceholder: { backgroundColor: COLORS.grayLight, alignItems: 'center', justifyContent: 'center' },
-  listCardBody: { flex: 1, padding: 12, gap: 4 },
-  listCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  listCardTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.text, marginRight: 6 },
-  listCardAddress: { fontSize: 12, color: COLORS.textSecondary },
-  listCardPrice: { fontSize: 16, fontWeight: '800', color: COLORS.primary },
-  listCardPriceSuffix: { fontSize: 12, fontWeight: '400', color: COLORS.textSecondary },
-  listCardBadgeRow: { flexDirection: 'row', gap: 6 },
-  typeBadge: { backgroundColor: '#EBF0FF', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  typeBadgeText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
-  genderBadge: { backgroundColor: '#F3F4F6', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  genderBadgeText: { fontSize: 11, fontWeight: '600', color: COLORS.textSecondary },
-  listCardFooter: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  amenityIcons: { flexDirection: 'row', gap: 6 },
-  distanceText: { fontSize: 11, color: COLORS.textSecondary, flex: 1 },
+  cardImageWrap: { width: '100%', height: 140, position: 'relative' },
+  cardImage: { width: '100%', height: 140 },
+  cardImagePlaceholder: {
+    backgroundColor: COLORS.grayLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  availBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  availBadgeGreen: { backgroundColor: 'rgba(34,197,94,0.85)' },
+  availBadgeRed: { backgroundColor: 'rgba(239,68,68,0.85)' },
+  availBadgeText: { fontSize: 10, fontWeight: '700', color: COLORS.white },
+  heartBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardBody: { padding: 10, gap: 4 },
+  cardTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, lineHeight: 18 },
+  cardLocationRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  cardLocation: { fontSize: 11, color: COLORS.textSecondary, flex: 1 },
+  cardPrice: { fontSize: 15, fontWeight: '800', color: COLORS.primary, marginTop: 2 },
+  cardPriceSuffix: { fontSize: 11, fontWeight: '400', color: COLORS.textSecondary },
+  cardTypeBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EBF0FF',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    marginTop: 2,
+  },
+  cardTypeBadgeText: { fontSize: 10, fontWeight: '700', color: COLORS.primary },
 
-  // Empty
+  // Empty state
   emptyState: { alignItems: 'center', paddingTop: 80, gap: 10 },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
   emptySubtitle: { fontSize: 14, color: COLORS.textSecondary },
+  emptyResetBtn: {
+    marginTop: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+  },
+  emptyResetText: { fontSize: 14, color: COLORS.white, fontWeight: '600' },
+
+  // Clear Filters FAB
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabText: { fontSize: 14, fontWeight: '700', color: COLORS.white },
 });
