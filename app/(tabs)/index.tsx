@@ -16,7 +16,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useSaveBoarding } from '@/hooks/useSaveBoarding';
 import { searchBoardings, getMyListings } from '@/lib/boarding';
 import { getMyReservations } from '@/lib/reservation';
-import { getBoardingPayments } from '@/lib/payment';
+import { getBoardingPayments, getMyPayments } from '@/lib/payment';
 import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
 import type { Reservation } from '@/types/reservation.types';
@@ -158,11 +158,64 @@ function BoardingCard({ item, showOccupancy }: { item: Boarding; showOccupancy?:
   );
 }
 
+// ─── Recent Payment Row ────────────────────────────────────────────────────────
+const PMT_STATUS_BG: Record<string, string> = {
+  PENDING: '#FEF3C7',
+  CONFIRMED: '#D1FAE5',
+  REJECTED: '#FEE2E2',
+};
+const PMT_STATUS_COLOR: Record<string, string> = {
+  PENDING: COLORS.orange,
+  CONFIRMED: COLORS.green,
+  REJECTED: COLORS.red,
+};
+const PMT_MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function RecentPaymentRow({ payment }: { payment: DetailedPayment }) {
+  const dateStr = (() => {
+    const iso = payment.paidAt ?? payment.createdAt;
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return `${d.getDate()} ${PMT_MONTH[d.getMonth()]} ${d.getFullYear()}`;
+  })();
+
+  return (
+    <TouchableOpacity
+      style={styles.recentPaymentCard}
+      activeOpacity={0.85}
+      onPress={() => router.push('/payments' as never)}
+    >
+      <View style={styles.recentPaymentLeft}>
+        <Text style={styles.recentPaymentPeriod} numberOfLines={1}>
+          {payment.rentalPeriod?.periodLabel ?? '—'}
+        </Text>
+        {payment.reservation?.boarding?.title && (
+          <Text style={styles.recentPaymentBoarding} numberOfLines={1}>
+            {payment.reservation.boarding.title}
+          </Text>
+        )}
+        <Text style={styles.recentPaymentDate}>{dateStr}</Text>
+      </View>
+      <View style={styles.recentPaymentRight}>
+        <Text style={styles.recentPaymentAmount}>
+          LKR {Number(payment.amount).toLocaleString()}
+        </Text>
+        <View style={[styles.recentPaymentBadge, { backgroundColor: PMT_STATUS_BG[payment.status] ?? '#F3F4F6' }]}>
+          <Text style={[styles.recentPaymentStatus, { color: PMT_STATUS_COLOR[payment.status] ?? COLORS.gray }]}>
+            {payment.status}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Student View ──────────────────────────────────────────────────────────────
 function StudentHome({ firstName }: { firstName: string }) {
   const [recommended, setRecommended] = useState<Boarding[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeReservation, setActiveReservation] = useState<Reservation | null>(null);
+  const [recentPayments, setRecentPayments] = useState<DetailedPayment[]>([]);
 
   useEffect(() => {
     searchBoardings({ size: 4 })
@@ -181,6 +234,9 @@ function StudentHome({ firstName }: { firstName: string }) {
         setActiveReservation(active);
       })
       .catch(() => setActiveReservation(null));
+    getMyPayments()
+      .then((r) => setRecentPayments(r.data.payments.slice(0, 3)))
+      .catch(() => setRecentPayments([]));
   }, []));
 
   return (
@@ -222,6 +278,21 @@ function StudentHome({ firstName }: { firstName: string }) {
             </TouchableOpacity>
           </View>
           <ActiveReservationCard reservation={activeReservation} />
+        </View>
+      )}
+
+      {/* Recent Payments */}
+      {recentPayments.length > 0 && (
+        <View style={styles.recentPaymentsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Payments</Text>
+            <TouchableOpacity onPress={() => router.push('/payments' as never)}>
+              <Text style={styles.viewAll}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          {recentPayments.map((p) => (
+            <RecentPaymentRow key={p.id} payment={p} />
+          ))}
         </View>
       )}
 
@@ -281,6 +352,15 @@ function StudentHome({ firstName }: { firstName: string }) {
             <Ionicons name="calendar-outline" size={22} color={COLORS.green} />
           </View>
           <Text style={styles.quickActionLabel}>My Reservations</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.quickActionCard}
+          onPress={() => router.push('/payments' as never)}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: '#EBF0FF' }]}>
+            <Ionicons name="card-outline" size={22} color={COLORS.primary} />
+          </View>
+          <Text style={styles.quickActionLabel}>My Payments</Text>
         </TouchableOpacity>
       </View>
 
@@ -744,4 +824,30 @@ const styles = StyleSheet.create({
   activeResExpiryText: { fontSize: 11, color: COLORS.orange, fontWeight: '600' },
   activeResArrow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3 },
   activeResViewText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
+
+  // Recent Payments
+  recentPaymentsSection: { marginBottom: 20 },
+  recentPaymentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.white,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  recentPaymentLeft: { flex: 1, gap: 2 },
+  recentPaymentPeriod: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  recentPaymentBoarding: { fontSize: 11, color: COLORS.textSecondary },
+  recentPaymentDate: { fontSize: 11, color: COLORS.textSecondary },
+  recentPaymentRight: { alignItems: 'flex-end', gap: 4 },
+  recentPaymentAmount: { fontSize: 14, fontWeight: '800', color: COLORS.text },
+  recentPaymentBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  recentPaymentStatus: { fontSize: 10, fontWeight: '700' },
 });
