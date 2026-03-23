@@ -365,6 +365,29 @@ function CurrentHomeHeroCard({ reservation }: { reservation: Reservation }) {
   );
 }
 
+// ─── No Reservation Placeholder ───────────────────────────────────────────────
+function NoReservationHeroPlaceholder() {
+  return (
+    <TouchableOpacity
+      style={styles.heroPlaceholder}
+      activeOpacity={0.85}
+      onPress={() => router.push('/(tabs)/search' as never)}
+    >
+      <View style={styles.heroPlaceholderIconBg}>
+        <Ionicons name="home-outline" size={28} color={COLORS.primary} />
+      </View>
+      <Text style={styles.heroPlaceholderTitle}>No Active Home Yet</Text>
+      <Text style={styles.heroPlaceholderSubtitle}>
+        You don't have an active reservation. Browse available boardings to find your perfect stay.
+      </Text>
+      <View style={styles.heroPlaceholderBtn}>
+        <Ionicons name="search-outline" size={15} color={COLORS.primary} />
+        <Text style={styles.heroPlaceholderBtnText}>Find a Boarding</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Student View ──────────────────────────────────────────────────────────────
 function StudentHome({ firstName }: { firstName: string }) {
   const [recommended, setRecommended] = useState<Boarding[]>([]);
@@ -434,24 +457,32 @@ function StudentHome({ firstName }: { firstName: string }) {
         </TouchableOpacity>
       </View>
 
-      {/* Active Reservation — hero card when ACTIVE, standard card when PENDING */}
-      {activeReservation && (
-        <View style={styles.activeResSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              {activeReservation.status === 'ACTIVE' ? 'Your Current Home' : 'Pending Application'}
-            </Text>
+      {/* Active Reservation — hero card when ACTIVE, standard card when PENDING, placeholder when none */}
+      <View style={styles.activeResSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {activeReservation?.status === 'ACTIVE'
+              ? 'Your Current Home'
+              : activeReservation?.status === 'PENDING'
+              ? 'Pending Application'
+              : 'Your Current Home'}
+          </Text>
+          {activeReservation && (
             <TouchableOpacity onPress={() => router.push('/reservations' as never)}>
               <Text style={styles.viewAll}>All reservations</Text>
             </TouchableOpacity>
-          </View>
-          {activeReservation.status === 'ACTIVE' ? (
+          )}
+        </View>
+        {activeReservation ? (
+          activeReservation.status === 'ACTIVE' ? (
             <CurrentHomeHeroCard reservation={activeReservation} />
           ) : (
             <ActiveReservationCard reservation={activeReservation} />
-          )}
-        </View>
-      )}
+          )
+        ) : (
+          <NoReservationHeroPlaceholder />
+        )}
+      </View>
 
       {/* Quick Manage Cards — between "Your Current Home" and "Upcoming Payment" */}
       <View style={styles.stuManageSection}>
@@ -1253,5 +1284,55 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 1,
+  },
+
+  // No Reservation Hero Placeholder
+  heroPlaceholder: {
+    marginHorizontal: 20,
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
+    padding: 20,
+    gap: 10,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.grayBorder,
+    borderStyle: 'dashed',
+  },
+  heroPlaceholderIconBg: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EBF0FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  heroPlaceholderTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  heroPlaceholderSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
+    paddingHorizontal: 8,
+  },
+  heroPlaceholderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    backgroundColor: '#EBF0FF',
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  heroPlaceholderBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
 });
