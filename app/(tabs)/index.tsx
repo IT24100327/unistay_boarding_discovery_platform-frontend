@@ -8,6 +8,7 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,11 @@ import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
 import type { Reservation, RentalPeriod } from '@/types/reservation.types';
 import type { DetailedPayment } from '@/types/payment.types';
+
+// ─── Layout Constants ──────────────────────────────────────────────────────────
+const SCREEN_W = Dimensions.get('window').width;
+const STAT_CARD_W = (SCREEN_W - 40 - 10) / 2;    // 2 cols: padding 20×2, 1 gap
+const MANAGE_CARD_W = (SCREEN_W - 40 - 20) / 3;  // 3 cols: padding 20×2, 2 gaps
 
 // ─── Active Reservation Card ───────────────────────────────────────────────────
 const ACTIVE_RES_BG: Record<string, string> = {
@@ -508,6 +514,34 @@ function StudentHome({ firstName }: { firstName: string }) {
   );
 }
 
+// ─── Pending Listing Compact Card ─────────────────────────────────────────────
+function PendingListingCard({ item }: { item: Boarding }) {
+  return (
+    <TouchableOpacity
+      style={styles.pendingListingCard}
+      activeOpacity={0.85}
+      onPress={() => router.push(`/my-listings/${item.id}/edit` as never)}
+    >
+      <View style={styles.pendingListingLeft}>
+        <Text style={styles.pendingListingTitle} numberOfLines={1}>{item.title}</Text>
+        <View style={styles.pendingListingLocation}>
+          <Ionicons name="location-outline" size={11} color={COLORS.gray} />
+          <Text style={styles.pendingListingLocationText}>
+            {item.city}, {item.district}
+          </Text>
+        </View>
+        <Text style={styles.pendingListingRent}>
+          LKR {item.monthlyRent.toLocaleString()}/mo
+        </Text>
+      </View>
+      <View style={styles.pendingListingBadge}>
+        <Ionicons name="time-outline" size={12} color={COLORS.orange} />
+        <Text style={styles.pendingListingBadgeText}>Pending</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Owner View ────────────────────────────────────────────────────────────────
 function OwnerHome({ firstName }: { firstName: string }) {
   const [ownerListings, setOwnerListings] = useState<Boarding[]>([]);
@@ -528,6 +562,9 @@ function OwnerHome({ firstName }: { firstName: string }) {
   const confirmedPayments = ownerPayments.filter((p) => p.status === 'CONFIRMED');
   const totalCollected = confirmedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
   const totalPending = pendingPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+  const pendingListings = ownerListings.filter((b) => b.status === 'PENDING_APPROVAL');
+  const activeListings = ownerListings.filter((b) => b.status !== 'PENDING_APPROVAL');
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
@@ -569,9 +606,18 @@ function OwnerHome({ firstName }: { firstName: string }) {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Manage</Text>
       </View>
-      <View style={styles.quickActionsGrid}>
+      <View style={styles.ownerManageGrid}>
         <TouchableOpacity
-          style={styles.quickActionCard}
+          style={styles.ownerManageCard}
+          onPress={() => router.push('/my-listings' as never)}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: '#EBF0FF' }]}>
+            <Ionicons name="home-outline" size={22} color={COLORS.primary} />
+          </View>
+          <Text style={styles.quickActionLabel}>My Listings</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.ownerManageCard}
           onPress={() => router.push('/my-listings/visits' as never)}
         >
           <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
@@ -580,7 +626,7 @@ function OwnerHome({ firstName }: { firstName: string }) {
           <Text style={styles.quickActionLabel}>Visit Requests</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.quickActionCard}
+          style={styles.ownerManageCard}
           onPress={() => router.push('/my-listings/reservations' as never)}
         >
           <View style={[styles.quickActionIcon, { backgroundColor: '#EBF0FF' }]}>
@@ -589,7 +635,7 @@ function OwnerHome({ firstName }: { firstName: string }) {
           <Text style={styles.quickActionLabel}>Applications</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.quickActionCard}
+          style={styles.ownerManageCard}
           onPress={() => router.push('/my-listings/tenants' as never)}
         >
           <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
@@ -598,7 +644,7 @@ function OwnerHome({ firstName }: { firstName: string }) {
           <Text style={styles.quickActionLabel}>Tenants</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.quickActionCard}
+          style={styles.ownerManageCard}
           onPress={() => router.push('/my-listings/payments' as never)}
         >
           <View style={[styles.quickActionIcon, { backgroundColor: '#FDF4FF' }]}>
@@ -653,7 +699,7 @@ function OwnerHome({ firstName }: { firstName: string }) {
         </View>
       ) : (
         <FlatList
-          data={ownerListings}
+          data={activeListings}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
@@ -669,6 +715,21 @@ function OwnerHome({ firstName }: { firstName: string }) {
             </TouchableOpacity>
           }
         />
+      )}
+
+      {/* Pending Listings */}
+      {pendingListings.length > 0 && (
+        <View style={styles.pendingListingsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Pending Approval</Text>
+            <TouchableOpacity onPress={() => router.push('/my-listings' as never)}>
+              <Text style={styles.viewAll}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          {pendingListings.map((item) => (
+            <PendingListingCard key={item.id} item={item} />
+          ))}
+        </View>
       )}
 
       <View style={{ height: 100 }} />
@@ -837,8 +898,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   ownerStatCard: {
-    flex: 1,
-    minWidth: '44%',
+    width: STAT_CARD_W,
     borderRadius: 14,
     padding: 14,
     gap: 4,
@@ -879,6 +939,62 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   quickActionLabel: { fontSize: 11, fontWeight: '600', color: COLORS.text, textAlign: 'center' },
+
+  // Owner Manage Grid (3 per row)
+  ownerManageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    gap: 10,
+    marginBottom: 20,
+  },
+  ownerManageCard: {
+    width: MANAGE_CARD_W,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 12,
+    alignItems: 'center',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+
+  // Pending Listings Section
+  pendingListingsSection: { marginTop: 4, marginBottom: 4 },
+  pendingListingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 12,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.orange,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  pendingListingLeft: { flex: 1, gap: 2 },
+  pendingListingTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  pendingListingLocation: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  pendingListingLocationText: { fontSize: 11, color: COLORS.textSecondary },
+  pendingListingRent: { fontSize: 12, fontWeight: '600', color: COLORS.primary, marginTop: 2 },
+  pendingListingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  pendingListingBadgeText: { fontSize: 11, fontWeight: '700', color: COLORS.orange },
 
   // Empty listing card
   emptyListingCard: {
