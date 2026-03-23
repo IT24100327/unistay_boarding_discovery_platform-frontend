@@ -160,14 +160,17 @@ export default function OwnerPaymentsDashboard() {
       <View style={styles.cardHeader}>
         <View style={{ flex: 1, gap: 2 }}>
           {/* Tenant name */}
-          {item.reservation?.student && (
+          {(item.student ?? item.reservation?.student) && (
             <Text style={styles.tenantName}>
-              {item.reservation.student.firstName} {item.reservation.student.lastName}
+              {(item.student ?? item.reservation!.student)!.firstName}{' '}
+              {(item.student ?? item.reservation!.student)!.lastName}
             </Text>
           )}
-          {item.reservation?.student?.email && (
-            <Text style={styles.tenantEmail}>{item.reservation.student.email}</Text>
-          )}
+          {(item.student?.email ?? item.reservation?.student?.email) ? (
+            <Text style={styles.tenantEmail}>
+              {item.student?.email ?? item.reservation!.student!.email}
+            </Text>
+          ) : null}
           {item.reservation?.boarding?.title && (
             <Text style={styles.boardingName} numberOfLines={1}>
               {item.reservation.boarding.title}

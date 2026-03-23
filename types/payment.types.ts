@@ -16,17 +16,31 @@ export interface DetailedPayment {
   confirmedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Top-level student — returned by /my-payments and /my-boardings list endpoints */
+  student?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
   rentalPeriod?: {
     id: string;
     periodLabel: string;
     dueDate: string;
+    /** Prisma Decimal serialised as number */
+    amountDue?: number;
+    status?: string;
   };
   reservation?: {
     id: string;
+    status?: string;
+    moveInDate?: string;
+    boardingId?: string;
     boarding?: {
       id: string;
       title: string;
     };
+    /** Kept for backward compat — prefer top-level `student` */
     student?: {
       id: string;
       firstName: string;

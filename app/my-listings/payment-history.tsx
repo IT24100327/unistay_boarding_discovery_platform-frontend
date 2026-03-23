@@ -50,10 +50,10 @@ function buildGroups(payments: DetailedPayment[]): TenantGroup[] {
     if (!map.has(key)) {
       map.set(key, {
         studentId: key,
-        studentName: p.reservation?.student
-          ? `${p.reservation.student.firstName} ${p.reservation.student.lastName}`
+        studentName: (p.student ?? p.reservation?.student)
+          ? `${(p.student ?? p.reservation!.student)!.firstName} ${(p.student ?? p.reservation!.student)!.lastName}`
           : 'Unknown Tenant',
-        studentEmail: p.reservation?.student?.email ?? '',
+        studentEmail: p.student?.email ?? p.reservation?.student?.email ?? '',
         boardingTitle: p.reservation?.boarding?.title ?? '—',
         payments: [],
         totalPaid: 0,
