@@ -192,7 +192,9 @@ export default function BoardingDetailsScreen() {
           <Text style={styles.sectionTitle}>Pricing</Text>
           <View style={styles.pricingRow}>
             <View style={styles.pricingItem}>
-              <Text style={styles.pricingValue}>LKR {boarding.monthlyRent.toLocaleString()}</Text>
+              <Text style={styles.pricingValue}>
+                {boarding.monthlyRent ? `LKR ${boarding.monthlyRent.toLocaleString()}` : '—'}
+              </Text>
               <Text style={styles.pricingLabel}>Monthly Rent</Text>
             </View>
           </View>
@@ -336,11 +338,36 @@ export default function BoardingDetailsScreen() {
           </>
         ) : (
           <>
-            <TouchableOpacity style={[styles.footerBtn, styles.footerBtnSecondary]}>
-              <Text style={styles.footerBtnSecondaryText}>Contact Owner</Text>
-            </TouchableOpacity>
+            {!isOwner && (
+              <TouchableOpacity
+                style={[styles.footerBtn, styles.footerBtnSecondary]}
+                onPress={() =>
+                  router.push({
+                    pathname: `/boardings/${slug}/schedule-visit` as never,
+                    params: {
+                      boardingId: boarding.id,
+                      boardingTitle: boarding.title,
+                    },
+                  })
+                }
+              >
+                <Text style={styles.footerBtnSecondaryText}>Schedule Visit</Text>
+              </TouchableOpacity>
+            )}
             {!isOwner && isAvailable && (
-              <TouchableOpacity style={[styles.footerBtn, styles.footerBtnPrimary]}>
+              <TouchableOpacity
+                style={[styles.footerBtn, styles.footerBtnPrimary]}
+                onPress={() =>
+                  router.push({
+                    pathname: `/boardings/${slug}/apply-reservation` as never,
+                    params: {
+                      boardingId: boarding.id,
+                      boardingTitle: boarding.title,
+                      monthlyRent: String(boarding.monthlyRent),
+                    },
+                  })
+                }
+              >
                 <Text style={styles.footerBtnPrimaryText}>Request Reservation</Text>
               </TouchableOpacity>
             )}

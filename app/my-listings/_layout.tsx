@@ -5,6 +5,9 @@ export default function MyListingsLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="[id]" />
+      <Stack.Screen name="payments" />
+      <Stack.Screen name="payment-detail" />
+      <Stack.Screen name="payment-history" />
     </Stack>
   );
 }

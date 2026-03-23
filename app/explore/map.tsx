@@ -64,7 +64,7 @@ export default function MapViewScreen() {
           >
             <View style={styles.marker}>
               <Text style={styles.markerText}>
-                LKR {(boarding.monthlyRent / 1000).toFixed(0)}k
+                {boarding.monthlyRent ? `LKR ${(boarding.monthlyRent / 1000).toFixed(0)}k` : '—'}
               </Text>
             </View>
             <Callout tooltip>
@@ -125,7 +125,9 @@ export default function MapViewScreen() {
             <View style={styles.previewInfo}>
               <Text style={styles.previewTitle} numberOfLines={1}>{selected.title}</Text>
               <Text style={styles.previewAddress} numberOfLines={1}>{selected.city}, {selected.district}</Text>
-              <Text style={styles.previewPrice}>LKR {selected.monthlyRent.toLocaleString()}/mo</Text>
+              <Text style={styles.previewPrice}>
+                {selected.monthlyRent ? `LKR ${selected.monthlyRent.toLocaleString()}/mo` : '—'}
+              </Text>
             </View>
             <TouchableOpacity onPress={() => setSelected(null)} style={styles.closePreview}>
               <Ionicons name="close" size={20} color={COLORS.gray} />

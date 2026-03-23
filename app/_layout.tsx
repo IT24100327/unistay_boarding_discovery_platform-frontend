@@ -29,6 +29,8 @@ export default function RootLayout() {
         <Stack.Screen name="my-listings" />
         <Stack.Screen name="boardings" />
         <Stack.Screen name="explore" />
+        <Stack.Screen name="visits" />
+        <Stack.Screen name="reservations" />
       </Stack>
       <Toast />
     </GestureHandlerRootView>

@@ -139,7 +139,7 @@ export default function SavedBoardingsScreen() {
                   <Ionicons name="location-outline" size={11} color={COLORS.gray} /> {item.city}, {item.district}
                 </Text>
                 <Text style={styles.cardPrice}>
-                  LKR {item.monthlyRent.toLocaleString()}
+                  {item.monthlyRent ? `LKR ${item.monthlyRent.toLocaleString()}` : '—'}
                   <Text style={styles.perMonth}>/mo</Text>
                 </Text>
               </View>

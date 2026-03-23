@@ -49,13 +49,63 @@ export default function ProfileScreen() {
       icon: <Feather name="edit-2" size={20} color={COLORS.primary} />,
       onPress: () => router.push('/profile/edit'),
     },
-    {
-      id: 'reservations',
-      label: 'My Reservations',
-      sublabel: 'Current and past bookings',
-      icon: <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />,
-      onPress: () => {},
-    },
+    ...(user?.role === 'STUDENT'
+      ? [
+          {
+            id: 'visits',
+            label: 'My Visit Requests',
+            sublabel: 'Scheduled property visits',
+            icon: <Ionicons name="eye-outline" size={20} color={COLORS.primary} />,
+            onPress: () => router.push('/visits' as never),
+          },
+          {
+            id: 'reservations',
+            label: 'My Reservations',
+            sublabel: 'Current and past bookings',
+            icon: <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />,
+            onPress: () => router.push('/reservations' as never),
+          },
+        ]
+      : []),
+    ...(user?.role === 'OWNER'
+      ? [
+          {
+            id: 'visit-requests',
+            label: 'Visit Requests',
+            sublabel: 'Review incoming visit requests',
+            icon: <Ionicons name="eye-outline" size={20} color={COLORS.primary} />,
+            onPress: () => router.push('/my-listings/visits' as never),
+          },
+          {
+            id: 'reservation-applications',
+            label: 'Reservation Applications',
+            sublabel: 'Review incoming reservation requests',
+            icon: <Ionicons name="document-text-outline" size={20} color={COLORS.primary} />,
+            onPress: () => router.push('/my-listings/reservations' as never),
+          },
+          {
+            id: 'tenants',
+            label: 'Active Tenants',
+            sublabel: 'Manage current tenants',
+            icon: <Ionicons name="people-outline" size={20} color={COLORS.primary} />,
+            onPress: () => router.push('/my-listings/tenants' as never),
+          },
+          {
+            id: 'payments',
+            label: 'Tenant Payments',
+            sublabel: 'Review, approve or reject payments',
+            icon: <Ionicons name="cash-outline" size={20} color={COLORS.primary} />,
+            onPress: () => router.push('/my-listings/payments' as never),
+          },
+          {
+            id: 'payment-history',
+            label: 'Payment History',
+            sublabel: 'Confirmed payments & earnings summary',
+            icon: <Ionicons name="time-outline" size={20} color={COLORS.primary} />,
+            onPress: () => router.push('/my-listings/payment-history' as never),
+          },
+        ]
+      : []),
     {
       id: 'saved',
       label: 'Saved Boardings',

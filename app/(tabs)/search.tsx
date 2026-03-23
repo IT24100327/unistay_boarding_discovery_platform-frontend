@@ -92,7 +92,11 @@ function BoardingListCard({ item }: { item: Boarding }) {
         <Text style={styles.listCardAddress} numberOfLines={1}>
           <Ionicons name="location-outline" size={11} color={COLORS.gray} /> {item.address}, {item.city}
         </Text>
-        <Text style={styles.listCardPrice}>LKR {item.monthlyRent.toLocaleString()}<Text style={styles.listCardPriceSuffix}>/mo</Text></Text>
+        <Text style={styles.listCardPrice}>
+          {item.monthlyRent
+            ? <>{`LKR ${item.monthlyRent.toLocaleString()}`}<Text style={styles.listCardPriceSuffix}>/mo</Text></>
+            : '—'}
+        </Text>
         <View style={styles.listCardBadgeRow}>
           <View style={styles.typeBadge}><Text style={styles.typeBadgeText}>{typeLabel[item.boardingType]}</Text></View>
           <View style={styles.genderBadge}><Text style={styles.genderBadgeText}>{genderLabel[item.genderPref]}</Text></View>
