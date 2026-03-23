@@ -23,7 +23,9 @@ import { COLORS } from '@/lib/constants';
 import type { Boarding, SortOption } from '@/types/boarding.types';
 
 const SCREEN_W = Dimensions.get('window').width;
-const CARD_W = (SCREEN_W - 16 * 2 - 10) / 2; // 2-column grid
+const LIST_H_PADDING = 16;   // horizontal padding on each side of the grid
+const COLUMN_GAP = 10;        // gap between the two grid columns
+const CARD_W = (SCREEN_W - LIST_H_PADDING * 2 - COLUMN_GAP) / 2;
 
 const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: 'Relevance', value: 'RELEVANCE' },
@@ -403,8 +405,8 @@ const styles = StyleSheet.create({
   sortMenuTextActive: { color: COLORS.primary, fontWeight: '600' },
 
   // Grid list
-  listContent: { padding: 16, paddingBottom: 100 },
-  columnWrapper: { gap: 10, marginBottom: 10 },
+  listContent: { padding: LIST_H_PADDING, paddingBottom: 100 },
+  columnWrapper: { gap: COLUMN_GAP, marginBottom: COLUMN_GAP },
 
   // Card
   card: {

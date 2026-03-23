@@ -85,6 +85,9 @@ function DualRangeSlider({
   onDragStart,
   onDragEnd,
 }: DualRangeSliderProps) {
+  // trackW drives re-renders so thumb positions update; trackWRef lets the
+  // PanResponder handlers (created once) always read the latest width.
+  const [trackW, setTrackW] = useState(0);
   const trackWRef = useRef(0);
 
   // Refs to track latest values inside PanResponder (avoid stale closures)
@@ -93,7 +96,7 @@ function DualRangeSlider({
   lowRef.current = low;
   highRef.current = high;
 
-  // Drag-start positions
+  // Drag-start positions (pixels from track left edge)
   const lowStartPx = useRef(0);
   const highStartPx = useRef(0);
 
@@ -151,38 +154,44 @@ function DualRangeSlider({
   ).current;
 
   const onTrackLayout = (e: LayoutChangeEvent) => {
-    trackWRef.current = e.nativeEvent.layout.width;
+    const w = e.nativeEvent.layout.width;
+    trackWRef.current = w;
+    setTrackW(w);
   };
 
-  const lowPct = (low - min) / (max - min);
-  const highPct = (high - min) / (max - min);
+  // Compute pixel positions from current track width (numeric, no type casts)
+  const lowPx = trackW > 0 ? ((low - min) / (max - min)) * trackW : 0;
+  const highPx = trackW > 0 ? ((high - min) / (max - min)) * trackW : trackW;
 
   return (
     <View>
-      {/* Track container — thumbs are positioned relative to this */}
-      <View
-        style={styles.sliderTrackContainer}
-        onLayout={onTrackLayout}
-      >
+      {/* Track container — thumbs are absolutely positioned inside */}
+      <View style={styles.sliderTrackContainer} onLayout={onTrackLayout}>
         {/* Grey base track */}
         <View style={styles.sliderTrack} />
         {/* Coloured selected range */}
-        <View
-          style={[
-            styles.sliderRange,
-            { left: `${lowPct * 100}%` as never, right: `${(1 - highPct) * 100}%` as never },
-          ]}
-        />
+        {trackW > 0 && (
+          <View
+            style={[
+              styles.sliderRange,
+              { left: lowPx, width: highPx - lowPx },
+            ]}
+          />
+        )}
         {/* Low thumb */}
-        <View
-          {...lowPan.panHandlers}
-          style={[styles.sliderThumb, { left: `${lowPct * 100}%` as never, marginLeft: -(THUMB_SIZE / 2) }]}
-        />
+        {trackW > 0 && (
+          <View
+            {...lowPan.panHandlers}
+            style={[styles.sliderThumb, { left: lowPx - THUMB_SIZE / 2 }]}
+          />
+        )}
         {/* High thumb */}
-        <View
-          {...highPan.panHandlers}
-          style={[styles.sliderThumb, { left: `${highPct * 100}%` as never, marginLeft: -(THUMB_SIZE / 2) }]}
-        />
+        {trackW > 0 && (
+          <View
+            {...highPan.panHandlers}
+            style={[styles.sliderThumb, { left: highPx - THUMB_SIZE / 2 }]}
+          />
+        )}
       </View>
       {/* Value labels */}
       <View style={styles.sliderLabels}>
