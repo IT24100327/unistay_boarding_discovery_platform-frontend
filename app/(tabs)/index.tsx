@@ -16,9 +16,11 @@ import { useAuthStore } from '@/store/auth.store';
 import { useSaveBoarding } from '@/hooks/useSaveBoarding';
 import { searchBoardings, getMyListings } from '@/lib/boarding';
 import { getMyReservations } from '@/lib/reservation';
+import { getBoardingPayments } from '@/lib/payment';
 import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
 import type { Reservation } from '@/types/reservation.types';
+import type { DetailedPayment } from '@/types/payment.types';
 
 // ─── Active Reservation Card ───────────────────────────────────────────────────
 const ACTIVE_RES_BG: Record<string, string> = {
@@ -290,6 +292,7 @@ function StudentHome({ firstName }: { firstName: string }) {
 // ─── Owner View ────────────────────────────────────────────────────────────────
 function OwnerHome({ firstName }: { firstName: string }) {
   const [ownerListings, setOwnerListings] = useState<Boarding[]>([]);
+  const [ownerPayments, setOwnerPayments] = useState<DetailedPayment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
@@ -297,7 +300,15 @@ function OwnerHome({ firstName }: { firstName: string }) {
       .then((r) => setOwnerListings(r.data.boardings))
       .catch(() => setOwnerListings([]))
       .finally(() => setIsLoading(false));
+    getBoardingPayments()
+      .then((r) => setOwnerPayments(r.data.payments))
+      .catch(() => setOwnerPayments([]));
   }, []));
+
+  const pendingPayments = ownerPayments.filter((p) => p.status === 'PENDING');
+  const confirmedPayments = ownerPayments.filter((p) => p.status === 'CONFIRMED');
+  const totalCollected = confirmedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalPending = pendingPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
@@ -318,12 +329,20 @@ function OwnerHome({ firstName }: { firstName: string }) {
       {/* Quick Stats */}
       <View style={styles.ownerStatsGrid}>
         <TouchableOpacity
-          style={[styles.ownerStatCard, { backgroundColor: '#EBF0FF', width: '100%' }]}
+          style={[styles.ownerStatCard, { backgroundColor: '#EBF0FF' }]}
           onPress={() => router.push('/my-listings' as never)}
         >
           <Ionicons name="home-outline" size={22} color={COLORS.primary} />
           <Text style={styles.ownerStatValue}>{ownerListings.length}</Text>
           <Text style={styles.ownerStatLabel}>Total Listings</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.ownerStatCard, { backgroundColor: '#FEF3C7' }]}
+          onPress={() => router.push('/my-listings/payments' as never)}
+        >
+          <Ionicons name="time-outline" size={22} color={COLORS.orange} />
+          <Text style={styles.ownerStatValue}>{pendingPayments.length}</Text>
+          <Text style={styles.ownerStatLabel}>Awaiting Review</Text>
         </TouchableOpacity>
       </View>
 
@@ -358,6 +377,47 @@ function OwnerHome({ firstName }: { firstName: string }) {
             <Ionicons name="people-outline" size={22} color={COLORS.green} />
           </View>
           <Text style={styles.quickActionLabel}>Tenants</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.quickActionCard}
+          onPress={() => router.push('/my-listings/payments' as never)}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: '#FDF4FF' }]}>
+            <Ionicons name="card-outline" size={22} color="#9333EA" />
+          </View>
+          <Text style={styles.quickActionLabel}>Payments</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Payment Overview */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Payment Overview</Text>
+        <TouchableOpacity onPress={() => router.push('/my-listings/payment-history' as never)}>
+          <Text style={styles.viewAll}>History</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.paymentOverviewRow}>
+        <TouchableOpacity
+          style={[styles.paymentOverviewCard, { backgroundColor: '#F0FDF4' }]}
+          onPress={() => router.push('/my-listings/payment-history' as never)}
+        >
+          <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.green} />
+          <Text style={styles.paymentOverviewAmount}>
+            LKR {totalCollected.toLocaleString()}
+          </Text>
+          <Text style={styles.paymentOverviewLabel}>Collected</Text>
+          <Text style={styles.paymentOverviewCount}>{confirmedPayments.length} payments</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.paymentOverviewCard, { backgroundColor: '#FFF7ED' }]}
+          onPress={() => router.push('/my-listings/payments' as never)}
+        >
+          <Ionicons name="time-outline" size={20} color={COLORS.orange} />
+          <Text style={styles.paymentOverviewAmount}>
+            LKR {totalPending.toLocaleString()}
+          </Text>
+          <Text style={styles.paymentOverviewLabel}>Awaiting Review</Text>
+          <Text style={styles.paymentOverviewCount}>{pendingPayments.length} pending</Text>
         </TouchableOpacity>
       </View>
 
@@ -633,6 +693,28 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
+
+  // Payment Overview
+  paymentOverviewRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 12,
+    marginBottom: 20,
+  },
+  paymentOverviewCard: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 14,
+    gap: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  paymentOverviewAmount: { fontSize: 15, fontWeight: '800', color: COLORS.text, marginTop: 4 },
+  paymentOverviewLabel: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
+  paymentOverviewCount: { fontSize: 11, color: COLORS.textSecondary },
 
   // Active Reservation Card
   activeResSection: { marginBottom: 4 },
