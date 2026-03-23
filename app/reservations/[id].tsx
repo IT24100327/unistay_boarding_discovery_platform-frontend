@@ -119,6 +119,37 @@ function RentalPeriodRow({ period }: { period: RentalPeriod }) {
   );
 }
 
+// ─── Payment History types ───────────────────────────────────────────────────────
+interface PaymentWithPeriod extends Payment { periodLabel: string; }
+
+// ─── Payment History Row ─────────────────────────────────────────────────────────
+function PaymentHistoryRow({ payment }: { payment: PaymentWithPeriod }) {
+  return (
+    <View style={styles.payHistoryRow}>
+      <View style={styles.payHistoryLeft}>
+        <Text style={styles.payHistoryPeriod}>{payment.periodLabel}</Text>
+        <Text style={styles.payHistoryMeta}>
+          {payment.paymentMethod.replace('_', ' ')} · {formatDate(payment.paidAt ?? payment.createdAt)}
+        </Text>
+        {payment.referenceNumber ? (
+          <Text style={styles.payHistoryRef}>Ref: {payment.referenceNumber}</Text>
+        ) : null}
+        {payment.status === 'REJECTED' && payment.rejectionReason ? (
+          <Text style={styles.payHistoryRejection}>Rejected: {payment.rejectionReason}</Text>
+        ) : null}
+      </View>
+      <View style={styles.payHistoryRight}>
+        <Text style={styles.payHistoryAmount}>LKR {Number(payment.amount).toLocaleString()}</Text>
+        <View style={[styles.periodBadge, { backgroundColor: PAY_STATUS_BG[payment.status] }]}>
+          <Text style={[styles.periodBadgeText, { color: PAY_STATUS_COLOR[payment.status] }]}>
+            {payment.status}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 // ─── Detail row helper ──────────────────────────────────────────────────────────
 function InfoRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; value: string }) {
   return (
@@ -223,7 +254,6 @@ export default function ReservationDetailScreen() {
   }, [currentPeriod, rentalPeriods]);
 
   /** All payments from every rental period, newest first. */
-  interface PaymentWithPeriod extends Payment { periodLabel: string; }
   const allPayments = useMemo<PaymentWithPeriod[]>(() => {
     return rentalPeriods
       .flatMap((p) => p.payments.map((pay) => ({ ...pay, periodLabel: p.periodLabel })))
@@ -526,12 +556,46 @@ export default function ReservationDetailScreen() {
                     <RentalPeriodRow
                       key={p.id}
                       period={p}
-                      onLogPayment={openLogPayment}
                     />
                   ))
                 )}
               </>
             )}
+          </View>
+        )}
+
+        {/* Log Payment card (ACTIVE reservations with an outstanding period) */}
+        {reservation.status === 'ACTIVE' && currentPeriod && currentPeriod.status !== 'PAID' && (
+          <View style={styles.card}>
+            <Text style={styles.cardSectionTitle}>Payment Due</Text>
+            <View style={styles.currentPeriodRow}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={styles.periodLabel}>{currentPeriod.periodLabel}</Text>
+                <Text style={styles.periodDue}>Due: {formatDate(currentPeriod.dueDate)}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                <Text style={styles.periodAmount}>LKR {(currentPeriod.amountDue ?? 0).toLocaleString()}</Text>
+                <View style={[styles.periodBadge, { backgroundColor: PERIOD_STATUS_BG[currentPeriod.status] }]}>
+                  <Text style={[styles.periodBadgeText, { color: PERIOD_STATUS_COLOR[currentPeriod.status] }]}>
+                    {currentPeriod.status.replace('_', ' ')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.logPaymentBigBtn} onPress={() => openLogPayment(currentPeriod)}>
+              <Ionicons name="add-circle-outline" size={18} color={COLORS.white} />
+              <Text style={styles.logPaymentBigBtnText}>Log Payment</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Payment History (ACTIVE reservations with at least one payment) */}
+        {reservation.status === 'ACTIVE' && allPayments.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardSectionTitle}>Payment History</Text>
+            {allPayments.map((pay) => (
+              <PaymentHistoryRow key={pay.id} payment={pay} />
+            ))}
           </View>
         )}
 
@@ -845,6 +909,44 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   logPaymentBtnText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
+
+  // Log Payment big button (reservation page level)
+  currentPeriodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.grayBorder,
+  },
+  logPaymentBigBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 13,
+  },
+  logPaymentBigBtnText: { fontSize: 14, fontWeight: '700', color: COLORS.white },
+
+  // Payment History rows
+  payHistoryRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.grayLight,
+    gap: 10,
+  },
+  payHistoryLeft: { flex: 1, gap: 2 },
+  payHistoryPeriod: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  payHistoryMeta: { fontSize: 12, color: COLORS.textSecondary },
+  payHistoryRef: { fontSize: 11, color: COLORS.textSecondary },
+  payHistoryRejection: { fontSize: 11, color: COLORS.red },
+  payHistoryRight: { alignItems: 'flex-end', gap: 4 },
+  payHistoryAmount: { fontSize: 14, fontWeight: '800', color: COLORS.text },
 
   // Log Payment Modal
   modalOverlay: {
