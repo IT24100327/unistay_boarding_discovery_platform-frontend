@@ -15,11 +15,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
 import { useSaveBoarding } from '@/hooks/useSaveBoarding';
 import { searchBoardings, getMyListings } from '@/lib/boarding';
-import { getMyReservations } from '@/lib/reservation';
+import { getMyReservations, getRentalPeriods } from '@/lib/reservation';
 import { getBoardingPayments, getMyPayments } from '@/lib/payment';
 import { COLORS } from '@/lib/constants';
 import type { Boarding } from '@/types/boarding.types';
-import type { Reservation } from '@/types/reservation.types';
+import type { Reservation, RentalPeriod } from '@/types/reservation.types';
 import type { DetailedPayment } from '@/types/payment.types';
 
 // ─── Active Reservation Card ───────────────────────────────────────────────────
@@ -210,12 +210,112 @@ function RecentPaymentRow({ payment }: { payment: DetailedPayment }) {
   );
 }
 
+// ─── Upcoming Payment Card ─────────────────────────────────────────────────────
+const PERIOD_STATUS_CONFIG: Record<string, { bg: string; color: string; label: string }> = {
+  OVERDUE:        { bg: '#FEE2E2', color: COLORS.red,     label: 'OVERDUE' },
+  DUE:            { bg: '#FEF3C7', color: COLORS.orange,  label: 'DUE' },
+  PARTIALLY_PAID: { bg: '#DBEAFE', color: '#1D4ED8',      label: 'PARTIAL' },
+  UPCOMING:       { bg: '#EBF0FF', color: COLORS.primary, label: 'UPCOMING' },
+  PAID:           { bg: '#D1FAE5', color: COLORS.green,   label: 'PAID' },
+};
+
+const PERIOD_MONTHS = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December',
+];
+
+function formatPeriodLabel(label: string): string {
+  const parts = label.split('-');
+  const year = parts[0];
+  const month = parseInt(parts[1] ?? '', 10);
+  if (isNaN(month) || !year) return label;
+  return `${PERIOD_MONTHS[month - 1] ?? label} ${year}`;
+}
+
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getDate()} ${PMT_MONTH[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function daysFromNow(iso: string): number {
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  const now = new Date();
+  const target = new Date(iso);
+  return Math.ceil((target.getTime() - now.getTime()) / MS_PER_DAY);
+}
+
+function UpcomingPaymentCard({
+  period,
+  nextPeriod,
+  reservationId,
+}: {
+  period: RentalPeriod;
+  nextPeriod: RentalPeriod | null;
+  reservationId: string;
+}) {
+  const cfg = PERIOD_STATUS_CONFIG[period.status] ?? PERIOD_STATUS_CONFIG.UPCOMING;
+  const isPaid = period.status === 'PAID';
+  const nextDays = nextPeriod ? daysFromNow(nextPeriod.dueDate) : null;
+
+  return (
+    <View style={styles.upcomingPayCard}>
+      <View style={styles.upcomingPayTop}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={styles.upcomingPayPeriod}>{formatPeriodLabel(period.periodLabel)}</Text>
+          <Text style={styles.upcomingPayDue}>Due: {formatShortDate(period.dueDate)}</Text>
+        </View>
+        <View style={[styles.upcomingPayBadge, { backgroundColor: cfg.bg }]}>
+          <Text style={[styles.upcomingPayBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+        </View>
+      </View>
+
+      <View style={styles.upcomingPayDivider} />
+
+      <View style={styles.upcomingPayAmountRow}>
+        <Text style={styles.upcomingPayAmountLabel}>Amount Due</Text>
+        <Text style={styles.upcomingPayAmount}>LKR {period.amountDue.toLocaleString()}</Text>
+      </View>
+
+      {isPaid ? (
+        nextPeriod && nextDays !== null ? (
+          <View style={styles.upcomingPayNextRow}>
+            <Ionicons name="checkmark-circle" size={16} color={COLORS.green} />
+            <Text style={styles.upcomingPayNextText}>
+              Next payment in{' '}
+              <Text style={{ fontWeight: '700', color: COLORS.text }}>
+                {nextDays > 0 ? `${nextDays} day${nextDays !== 1 ? 's' : ''}` : 'today'}
+              </Text>
+              {' '}· {formatPeriodLabel(nextPeriod.periodLabel)}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.upcomingPayNextRow}>
+            <Ionicons name="checkmark-circle" size={16} color={COLORS.green} />
+            <Text style={styles.upcomingPayNextText}>All payments up to date</Text>
+          </View>
+        )
+      ) : (
+        <TouchableOpacity
+          style={styles.upcomingPayBtn}
+          activeOpacity={0.85}
+          onPress={() => router.push(`/reservations/${reservationId}` as never)}
+        >
+          <Ionicons name="add-circle-outline" size={16} color={COLORS.white} />
+          <Text style={styles.upcomingPayBtnText}>Log Payment</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 // ─── Student View ──────────────────────────────────────────────────────────────
 function StudentHome({ firstName }: { firstName: string }) {
   const [recommended, setRecommended] = useState<Boarding[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeReservation, setActiveReservation] = useState<Reservation | null>(null);
   const [recentPayments, setRecentPayments] = useState<DetailedPayment[]>([]);
+  const [upcomingPeriod, setUpcomingPeriod] = useState<RentalPeriod | null>(null);
+  const [nextPeriod, setNextPeriod] = useState<RentalPeriod | null>(null);
 
   useEffect(() => {
     searchBoardings({ size: 4 })
@@ -232,6 +332,28 @@ function StudentHome({ firstName }: { firstName: string }) {
           ?? reservations.find((res) => res.status === 'PENDING')
           ?? null;
         setActiveReservation(active);
+        if (active?.status === 'ACTIVE') {
+          const PRIORITY: Record<string, number> = { OVERDUE: 0, DUE: 1, PARTIALLY_PAID: 2, UPCOMING: 3, PAID: 99 };
+          getRentalPeriods(active.id)
+            .then((rp) => {
+              const sorted = [...rp.data.rentalPeriods].sort(
+                (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
+              );
+              const current = sorted.slice().sort(
+                (a, b) => (PRIORITY[a.status] ?? 99) - (PRIORITY[b.status] ?? 99),
+              )[0] ?? null;
+              setUpcomingPeriod(current);
+              if (current?.status === 'PAID') {
+                setNextPeriod(sorted.find((p) => p.status === 'UPCOMING' && p.id !== current.id) ?? null);
+              } else {
+                setNextPeriod(null);
+              }
+            })
+            .catch(() => { setUpcomingPeriod(null); setNextPeriod(null); });
+        } else {
+          setUpcomingPeriod(null);
+          setNextPeriod(null);
+        }
       })
       .catch(() => setActiveReservation(null));
     getMyPayments()
@@ -278,6 +400,23 @@ function StudentHome({ firstName }: { firstName: string }) {
             </TouchableOpacity>
           </View>
           <ActiveReservationCard reservation={activeReservation} />
+        </View>
+      )}
+
+      {/* Upcoming Payment */}
+      {upcomingPeriod && activeReservation?.status === 'ACTIVE' && (
+        <View style={styles.upcomingPaySection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Upcoming Payment</Text>
+            <TouchableOpacity onPress={() => router.push(`/reservations/${activeReservation.id}` as never)}>
+              <Text style={styles.viewAll}>Details</Text>
+            </TouchableOpacity>
+          </View>
+          <UpcomingPaymentCard
+            period={upcomingPeriod}
+            nextPeriod={nextPeriod}
+            reservationId={activeReservation.id}
+          />
         </View>
       )}
 
@@ -824,6 +963,42 @@ const styles = StyleSheet.create({
   activeResExpiryText: { fontSize: 11, color: COLORS.orange, fontWeight: '600' },
   activeResArrow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3 },
   activeResViewText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
+
+  // Upcoming Payment Card
+  upcomingPaySection: { marginBottom: 4 },
+  upcomingPayCard: {
+    marginHorizontal: 20,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
+    gap: 10,
+  },
+  upcomingPayTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  upcomingPayPeriod: { fontSize: 15, fontWeight: '700', color: COLORS.text },
+  upcomingPayDue: { fontSize: 12, color: COLORS.textSecondary },
+  upcomingPayBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
+  upcomingPayBadgeText: { fontSize: 11, fontWeight: '800' },
+  upcomingPayDivider: { height: 1, backgroundColor: COLORS.grayLight },
+  upcomingPayAmountRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  upcomingPayAmountLabel: { fontSize: 13, color: COLORS.textSecondary },
+  upcomingPayAmount: { fontSize: 16, fontWeight: '800', color: COLORS.text },
+  upcomingPayNextRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  upcomingPayNextText: { fontSize: 12, color: COLORS.textSecondary, flex: 1 },
+  upcomingPayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  upcomingPayBtnText: { fontSize: 14, fontWeight: '700', color: COLORS.white },
 
   // Recent Payments
   recentPaymentsSection: { marginBottom: 20 },
