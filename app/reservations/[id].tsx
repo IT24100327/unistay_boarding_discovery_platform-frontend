@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getReservationById, getRentalPeriods, cancelReservation } from '@/lib/reservation';
 import { createPayment, uploadProofImage } from '@/lib/payment';
 import { COLORS } from '@/lib/constants';
-import type { Reservation, RentalPeriod, ReservationStatus, RentalPeriodStatus } from '@/types/reservation.types';
+import type { Reservation, RentalPeriod, ReservationStatus, RentalPeriodStatus, Payment, PaymentStatus } from '@/types/reservation.types';
 import type { PaymentMethod } from '@/types/reservation.types';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -56,6 +56,21 @@ const PERIOD_STATUS_COLOR: Record<RentalPeriodStatus, string> = {
   OVERDUE: COLORS.red,
 };
 
+const PAY_STATUS_BG: Record<PaymentStatus, string> = {
+  PENDING:   '#FEF3C7',
+  CONFIRMED: '#D1FAE5',
+  REJECTED:  '#FEE2E2',
+};
+const PAY_STATUS_COLOR: Record<PaymentStatus, string> = {
+  PENDING:   COLORS.orange,
+  CONFIRMED: COLORS.green,
+  REJECTED:  COLORS.red,
+};
+
+const PERIOD_PRIORITY: Record<RentalPeriodStatus, number> = {
+  OVERDUE: 0, DUE: 1, PARTIALLY_PAID: 2, UPCOMING: 3, PAID: 99,
+};
+
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -75,15 +90,7 @@ function formatDateTime(iso: string) {
 }
 
 // ─── Rental Period Row ──────────────────────────────────────────────────────────
-const LOG_PAYMENT_ELIGIBLE: RentalPeriodStatus[] = ['UPCOMING', 'DUE', 'PARTIALLY_PAID'];
-
-function RentalPeriodRow({
-  period,
-  onLogPayment,
-}: {
-  period: RentalPeriod;
-  onLogPayment?: (period: RentalPeriod) => void;
-}) {
+function RentalPeriodRow({ period }: { period: RentalPeriod }) {
   const confirmedTotal = period.payments
     .filter((p) => p.status === 'CONFIRMED')
     .reduce((sum, p) => sum + Number(p.amount), 0);
@@ -107,15 +114,6 @@ function RentalPeriodRow({
             {period.status.replace('_', ' ')}
           </Text>
         </View>
-        {LOG_PAYMENT_ELIGIBLE.indexOf(period.status) !== -1 && onLogPayment && (
-          <TouchableOpacity
-            style={styles.logPaymentBtn}
-            onPress={() => onLogPayment(period)}
-          >
-            <Ionicons name="add-circle-outline" size={13} color={COLORS.primary} />
-            <Text style={styles.logPaymentBtnText}>Log Payment</Text>
-          </TouchableOpacity>
-        )}
       </View>
     </View>
   );
@@ -180,12 +178,64 @@ export default function ReservationDetailScreen() {
     if (!id) return;
     setIsLoading(true);
     getReservationById(id)
-      .then((res) => setReservation(res.data.reservation))
+      .then(async (res) => {
+        const resData = res.data.reservation;
+        setReservation(resData);
+        // Auto-load rental periods for ACTIVE reservations
+        if (resData.status === 'ACTIVE') {
+          setLoadingPeriods(true);
+          try {
+            const rp = await getRentalPeriods(resData.id);
+            setRentalPeriods(rp.data.rentalPeriods);
+          } catch {
+            // Non-fatal: periods section will show empty state
+          } finally {
+            setLoadingPeriods(false);
+          }
+        }
+      })
       .catch(() => Alert.alert('Error', 'Failed to load reservation details.'))
       .finally(() => setIsLoading(false));
   }, [id]);
 
+  // ── Derived values ──────────────────────────────────────────────────────────
+  /** The rental period needing the most urgent attention. */
+  const currentPeriod = useMemo<RentalPeriod | null>(() => {
+    if (rentalPeriods.length === 0) return null;
+    return (
+      [...rentalPeriods].sort((a, b) => {
+        const pa = PERIOD_PRIORITY[a.status] ?? 99;
+        const pb = PERIOD_PRIORITY[b.status] ?? 99;
+        if (pa !== pb) return pa - pb;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      })[0] ?? null
+    );
+  }, [rentalPeriods]);
+
+  /** Next unpaid period when the current one is already PAID. */
+  const nextPeriod = useMemo<RentalPeriod | null>(() => {
+    if (!currentPeriod || currentPeriod.status !== 'PAID') return null;
+    return (
+      rentalPeriods
+        .filter((p) => p.id !== currentPeriod.id && p.status !== 'PAID')
+        .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0] ?? null
+    );
+  }, [currentPeriod, rentalPeriods]);
+
+  /** All payments from every rental period, newest first. */
+  interface PaymentWithPeriod extends Payment { periodLabel: string; }
+  const allPayments = useMemo<PaymentWithPeriod[]>(() => {
+    return rentalPeriods
+      .flatMap((p) => p.payments.map((pay) => ({ ...pay, periodLabel: p.periodLabel })))
+      .sort((a, b) => {
+        const da = a.paidAt ?? a.createdAt;
+        const db = b.paidAt ?? b.createdAt;
+        return new Date(db).getTime() - new Date(da).getTime();
+      });
+  }, [rentalPeriods]);
+
   const handleTogglePeriods = async () => {
+    // If periods weren't auto-loaded yet (shouldn't happen for ACTIVE), load them
     if (!periodsExpanded && rentalPeriods.length === 0 && reservation?.id) {
       setLoadingPeriods(true);
       try {
