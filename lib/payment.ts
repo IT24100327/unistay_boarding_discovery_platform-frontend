@@ -42,6 +42,13 @@ export async function getMyPayments() {
   return response.data;
 }
 
+export async function getPaymentById(id: string) {
+  const response = await api.get<UniStayApiResponse<{ payment: DetailedPayment }>>(
+    `/payments/${id}`,
+  );
+  return response.data;
+}
+
 export async function getBoardingPayments() {
   const response = await api.get<UniStayApiResponse<{ payments: DetailedPayment[] }>>(
     '/payments/my-boardings',

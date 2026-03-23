@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { confirmPayment, rejectPayment } from '@/lib/payment';
+import { confirmPayment, rejectPayment, getPaymentById } from '@/lib/payment';
 import { COLORS } from '@/lib/constants';
 import type { DetailedPayment } from '@/types/payment.types';
 import type { PaymentStatus } from '@/types/reservation.types';
@@ -76,6 +76,16 @@ export default function PaymentDetailScreen() {
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [proofVisible, setProofVisible] = useState(false);
+
+  // Fetch full payment details on mount so nested fields
+  // (reservation.student, rentalPeriod, etc.) are populated
+  // even when the list endpoint omits them.
+  useEffect(() => {
+    getPaymentById(payment.id)
+      .then((res) => setPayment(res.data.payment))
+      .catch(() => {/* fall back to params data already in state */});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleConfirm = () => {
     Alert.alert(
