@@ -272,6 +272,11 @@ export default function ExploreScreen() {
 
       {/* ── Header ── */}
       <View style={styles.header}>
+        {/* Row 0: page heading */}
+        <View style={styles.headingRow}>
+          <Text style={styles.headingText}>Explore</Text>
+        </View>
+
         {/* Row 1: search + filter */}
         <View style={styles.searchRow}>
           <View style={styles.searchBar}>
@@ -469,12 +474,22 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: COLORS.white,
     paddingHorizontal: 14,
-    paddingTop: 6,
+    paddingTop: 8,
     paddingBottom: 8,
     gap: 6,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.grayBorder,
     zIndex: 10,
+  },
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headingText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: COLORS.text,
+    letterSpacing: -0.5,
   },
   searchRow: {
     flexDirection: 'row',
