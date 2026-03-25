@@ -70,6 +70,7 @@ export interface CreateReviewPayload {
 }
 
 export interface CreateCommentPayload {
+  userId: string;
   comment: string;
 }
 
