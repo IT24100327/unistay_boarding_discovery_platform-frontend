@@ -24,11 +24,12 @@ import { Header } from '@/components/layout/Header';
 import { COLORS } from '@/lib/constants';
 import { getErrorMessage } from '@/utils/helpers';
 import { useImagePicker } from '@/hooks/useImagePicker';
+import { uploadProfileImage } from '@/lib/user';
 
 type EditForm = z.infer<typeof editProfileSchema>;
 
 export default function EditProfileScreen() {
-  const { user, updateProfile, isLoading } = useAuthStore();
+  const { user, updateProfile, refreshProfile, isLoading } = useAuthStore();
   const { pickImage, imageUri } = useImagePicker();
 
   const {
@@ -48,7 +49,11 @@ export default function EditProfileScreen() {
 
   const onSubmit = async (data: EditForm) => {
     try {
-      await updateProfile({ ...data, avatar: imageUri ?? user?.avatar });
+      await updateProfile(data);
+      if (imageUri) {
+        await uploadProfileImage(imageUri);
+        await refreshProfile();
+      }
       Alert.alert('Success', 'Profile updated!', [{ text: 'OK', onPress: () => router.back() }]);
     } catch (err) {
       Alert.alert('Error', getErrorMessage(err));
