@@ -50,6 +50,8 @@ const MAX_COMMENT_CHARS = 500;
 const MAX_REVIEW_CHARS = 1000;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm'];
+const RATING_KEYS = [1, 2, 3, 4, 5] as const;
+type RatingKey = (typeof RATING_KEYS)[number];
 
 function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
@@ -313,7 +315,10 @@ function WriteReviewModal({ visible, boardingId, editTarget, onClose, onSuccess 
       return;
     }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Toast.show({ type: 'error', text1: 'Permission denied' }); return; }
+    if (status !== 'granted') {
+      Toast.show({ type: 'error', text1: 'Permission denied' });
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
@@ -879,12 +884,19 @@ export default function BoardingReviewsScreen() {
       setReviews((prev) => [review, ...prev]);
       if (stats) {
         const newTotal = stats.totalReviews + 1;
-        const newAvg = Math.round(((stats.averageRating * stats.totalReviews + review.rating) / newTotal) * 10) / 10;
+        const newAvg =
+          Math.round(
+            ((stats.averageRating * stats.totalReviews + review.rating) / newTotal) * 10,
+          ) / 10;
+        const ratingKey = review.rating as RatingKey;
         setStats({
           ...stats,
           totalReviews: newTotal,
           averageRating: newAvg,
-          distribution: { ...stats.distribution, [review.rating]: (stats.distribution[review.rating as keyof typeof stats.distribution] ?? 0) + 1 },
+          distribution: {
+            ...stats.distribution,
+            [ratingKey]: (stats.distribution[ratingKey] ?? 0) + 1,
+          },
         });
       }
     }
@@ -941,11 +953,11 @@ export default function BoardingReviewsScreen() {
               <Text style={styles.statsCount}>{totalReviews} reviews</Text>
             </View>
             <View style={styles.statsRight}>
-              {[5, 4, 3, 2, 1].map((s) => (
+              {RATING_KEYS.slice().reverse().map((s) => (
                 <RatingBar
                   key={s}
                   stars={s}
-                  count={stats?.distribution[s as keyof typeof stats.distribution] ?? 0}
+                  count={stats?.distribution[s] ?? 0}
                   total={totalReviews}
                 />
               ))}
