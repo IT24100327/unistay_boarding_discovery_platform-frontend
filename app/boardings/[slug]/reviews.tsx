@@ -579,7 +579,7 @@ function CommentThread({
               onDelete={() => onDeleteComment(c.id)}
             />
           ))}
-          {comments.length === 0 && (
+          {(comments ?? []).length === 0 && (
             <Text style={styles.noCommentsText}>No comments yet. Be the first!</Text>
           )}
         </>
@@ -648,7 +648,7 @@ function ReviewCard({
 }) {
   const isOwner = currentUserId === review.authorId;
   const canEdit = isOwner && !review.editedAt;
-  const commentCount = review._count?.comments ?? comments.length;
+  const commentCount = review._count?.comments ?? (comments ?? []).length;
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -690,7 +690,7 @@ function ReviewCard({
         </View>
       )}
       {!!review.comment && <Text style={styles.reviewComment}>{review.comment}</Text>}
-      {review.media.length > 0 && <MediaGrid media={review.media} onPress={onMediaPress} />}
+      {(review.media ?? []).length > 0 && <MediaGrid media={review.media} onPress={onMediaPress} />}
       <View style={styles.reviewFooter}>
         <ReactionRow reactions={review.reactions} onReact={onReact} />
         <TouchableOpacity style={styles.replyBtn} onPress={onToggleComments}>
