@@ -18,7 +18,7 @@ export const COLORS = {
   warning: '#F97316',
 };
 
-export const API_URL = 'http://localhost:3000/api';
+export const API_URL = 'http://192.168.1.3:3000/api';
 
 export const STORAGE_KEYS = {
   TOKEN: 'unistay_token',
@@ -27,4 +27,4 @@ export const STORAGE_KEYS = {
   ONBOARDING_DONE: 'unistay_onboarding_done',
 };
 
-export const APP_VERSION = '2.4.0';
+export const APP_VERSION = 'beta 0.1.6';
