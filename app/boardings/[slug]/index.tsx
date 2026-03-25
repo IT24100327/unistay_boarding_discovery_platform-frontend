@@ -370,7 +370,18 @@ export default function BoardingDetailsScreen() {
             </TouchableOpacity>
           </View>
           {reviews.length === 0 ? (
-            <Text style={styles.noReviewsText}>No reviews yet.</Text>
+            <View style={styles.noReviewsContainer}>
+              <Text style={styles.noReviewsText}>No reviews yet.</Text>
+              {!isOwnListing && (
+                <TouchableOpacity
+                  style={styles.addReviewBtn}
+                  onPress={() => router.push(`/boardings/${slug}/reviews` as never)}
+                >
+                  <Ionicons name="star-outline" size={15} color={COLORS.primary} />
+                  <Text style={styles.addReviewBtnText}>Add Review</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           ) : (
             reviews.slice(0, 2).map((review) => (
               <View key={review.id} style={styles.reviewCard}>
@@ -708,6 +719,18 @@ const styles = StyleSheet.create({
   },
   seeAllLink: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
   noReviewsText: { fontSize: 14, color: COLORS.textSecondary, fontStyle: 'italic' },
+  noReviewsContainer: { gap: 10 },
+  addReviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: '#EBF0FF',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  addReviewBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
   reviewCard: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
