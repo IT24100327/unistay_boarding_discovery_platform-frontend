@@ -741,7 +741,8 @@ export default function BoardingReviewsScreen() {
       const b = boardingRef.current;
       if (!b) return;
       const res = await getBoardingReviewsById(b.id, { page: pageNum, limit: PAGE_LIMIT, sortBy: sb, sortOrder: so });
-      const { reviews: newReviews, pagination } = res.data;
+      const newReviews = res.data;
+      const { pagination } = res;
       setReviews((prev) => (append ? [...prev, ...newReviews] : newReviews));
       setPage(pagination.page);
       setTotalPages(pagination.totalPages);

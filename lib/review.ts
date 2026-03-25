@@ -5,7 +5,7 @@ import type {
   ReviewStats,
   ReviewComment,
   ReviewsQueryParams,
-  ReviewsListResponse,
+  ReviewsApiResponse,
   ReactionType,
   ReactionAction,
   CreateCommentPayload,
@@ -23,7 +23,7 @@ export async function getBoardingReviewsById(
   boardingId: string,
   params: ReviewsQueryParams = {},
 ) {
-  const response = await api.get<UniStayApiResponse<ReviewsListResponse>>(
+  const response = await api.get<ReviewsApiResponse>(
     `/reviews/boarding/${boardingId}`,
     { params },
   );

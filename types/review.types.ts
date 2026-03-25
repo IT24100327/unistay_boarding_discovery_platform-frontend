@@ -86,3 +86,15 @@ export interface ReviewsListResponse {
     totalPages: number;
   };
 }
+
+export interface ReviewsApiResponse {
+  success: true;
+  message: string;
+  data: Review[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
