@@ -15,10 +15,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
-import { getBoardingBySlug, getBoardingReviews } from '@/lib/boarding';
+import { getBoardingBySlug } from '@/lib/boarding';
+import { getBoardingReviewsById } from '@/lib/review';
 import { useSaveBoarding } from '@/hooks/useSaveBoarding';
 import { COLORS } from '@/lib/constants';
-import type { Boarding, BoardingReview, AmenityName } from '@/types/boarding.types';
+import type { Boarding, AmenityName } from '@/types/boarding.types';
+import type { Review } from '@/types/review.types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MAX_DESCRIPTION_PREVIEW_LENGTH = 200;
@@ -74,7 +76,7 @@ export default function BoardingDetailsScreen() {
   const { user } = useAuthStore();
 
   const [boarding, setBoarding] = useState<Boarding | null>(null);
-  const [reviews, setReviews] = useState<BoardingReview[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [descExpanded, setDescExpanded] = useState(false);
@@ -87,10 +89,12 @@ export default function BoardingDetailsScreen() {
   useEffect(() => {
     if (!slug) return;
     setIsLoading(true);
-    Promise.all([
-      getBoardingBySlug(slug).then((r) => setBoarding(r.data.boarding)),
-      getBoardingReviews(slug).then((r) => setReviews(r.data.reviews)).catch(() => setReviews([])),
-    ])
+    getBoardingBySlug(slug)
+      .then((r) => {
+        setBoarding(r.data.boarding);
+        return getBoardingReviewsById(r.data.boarding.id, { limit: 2 });
+      })
+      .then((r) => setReviews(r.data.reviews))
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, [slug]);

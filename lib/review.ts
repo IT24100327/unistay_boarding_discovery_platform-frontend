@@ -91,6 +91,36 @@ export async function getReviewById(reviewId: string) {
   };
 }
 
+export async function getMyReviews(params: ReviewsQueryParams = {}) {
+  const response = await api.get<UniStayApiResponse<{ reviews: RawReview[]; pagination: ReviewsListResponse['pagination'] }>>(
+    '/reviews/my',
+    { params },
+  );
+  const raw = response.data;
+  return {
+    ...raw,
+    data: {
+      reviews: (raw.data.reviews ?? []).map(normalizeReview),
+      pagination: raw.data.pagination,
+    },
+  };
+}
+
+export async function getMyBoardingReviews(params: ReviewsQueryParams = {}) {
+  const response = await api.get<UniStayApiResponse<{ reviews: RawReview[]; pagination: ReviewsListResponse['pagination'] }>>(
+    '/reviews/my-boardings',
+    { params },
+  );
+  const raw = response.data;
+  return {
+    ...raw,
+    data: {
+      reviews: (raw.data.reviews ?? []).map(normalizeReview),
+      pagination: raw.data.pagination,
+    },
+  };
+}
+
 export async function createReview(formData: FormData) {
   const response = await api.post<UniStayApiResponse<{ id: string; boardingId: string; studentId: string }>>(
     '/reviews',
