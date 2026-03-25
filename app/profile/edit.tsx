@@ -71,7 +71,7 @@ export default function EditProfileScreen() {
           {/* Avatar */}
           <View style={styles.avatarSection}>
             <Avatar
-              uri={imageUri ?? user?.avatar}
+              uri={imageUri ?? user?.profileImageUrl ?? undefined}
               firstName={user?.firstName}
               lastName={user?.lastName}
               size={90}

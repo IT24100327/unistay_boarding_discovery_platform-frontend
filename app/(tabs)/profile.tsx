@@ -222,7 +222,7 @@ export default function ProfileScreen() {
           <View style={styles.avatarSection}>
             <View style={styles.avatarWrapper}>
               <Avatar
-                uri={user?.profileImageUrl ?? user?.avatar}
+                uri={user?.profileImageUrl ?? undefined}
                 firstName={user?.firstName}
                 lastName={user?.lastName}
                 size={100}
@@ -236,11 +236,15 @@ export default function ProfileScreen() {
             </Text>
             <View style={styles.badgeRow}>
               <Badge label={user?.role === 'OWNER' ? 'Property Owner' : 'Student'} variant="primary" pill />
+              {user?.username ? <Text style={styles.username}>@{user.username}</Text> : null}
             </View>
           </View>
 
           <View style={styles.formCard}>
             <Text style={styles.sectionTitle}>Edit Profile</Text>
+            <Text style={styles.sectionHelper}>
+              Update your details directly here and tap Save Changes.
+            </Text>
 
             <Controller
               control={control}
@@ -385,6 +389,8 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text, marginBottom: 12 },
+  sectionHelper: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 12 },
+  username: { fontSize: 14, color: COLORS.textSecondary },
   disabledInput: { opacity: 0.6 },
   saveBtn: { marginTop: 4 },
   menuCard: {
