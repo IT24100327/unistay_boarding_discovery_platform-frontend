@@ -236,11 +236,11 @@ function CommentItem({
   return (
     <View style={styles.commentItem}>
       <View style={styles.commentAvatar}>
-        <Text style={styles.commentAvatarText}>{comment.authorName.charAt(0).toUpperCase()}</Text>
+        <Text style={styles.commentAvatarText}>{comment.authorName?.charAt(0).toUpperCase() ?? '?'}</Text>
       </View>
       <View style={{ flex: 1 }}>
         <View style={styles.commentHeader}>
-          <Text style={styles.commentAuthor}>{comment.authorName}</Text>
+          <Text style={styles.commentAuthor}>{comment.authorName ?? ''}</Text>
           {comment.editedAt && <Text style={styles.editedBadge}>(Edited)</Text>}
           <Text style={styles.commentDate}>
             {new Date(comment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -655,11 +655,11 @@ function ReviewCard({
     <View style={styles.reviewCard}>
       <View style={styles.reviewHeader}>
         <View style={styles.reviewAvatar}>
-          <Text style={styles.reviewAvatarText}>{review.authorName.charAt(0).toUpperCase()}</Text>
+          <Text style={styles.reviewAvatarText}>{review.reviewerName.charAt(0).toUpperCase()}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={styles.reviewerName}>{review.authorName}</Text>
+            <Text style={styles.reviewerName}>{review.reviewerName}</Text>
             {review.editedAt && <Text style={styles.editedBadge}>(Edited)</Text>}
           </View>
           <StarRow rating={review.rating} />

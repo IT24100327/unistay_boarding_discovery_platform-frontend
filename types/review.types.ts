@@ -29,7 +29,7 @@ export interface Review {
   id: string;
   boardingId: string;
   authorId: string;
-  authorName: string;
+  reviewerName: string;
   authorAvatar?: string;
   rating: number;
   comment: string | null;
