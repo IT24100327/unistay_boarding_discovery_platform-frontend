@@ -1,7 +1,11 @@
 import api from './api';
 import type { UniStayApiResponse } from '@/types/api.types';
 import type {
+  RawReview,
+  RawReviewComment,
   Review,
+  ReviewComment,
+  ReviewMedia,
   ReviewStats,
   ReviewsListResponse,
   ReviewsQueryParams,
@@ -10,6 +14,46 @@ import type {
   CreateCommentPayload,
   UpdateCommentPayload,
 } from '@/types/review.types';
+
+// ── Normalization helpers ────────────────────────────────────────────────────
+
+function normalizeComment(raw: RawReviewComment): ReviewComment {
+  return {
+    id: raw.id,
+    reviewId: raw.reviewId,
+    authorId: raw.commentorId,
+    authorName: `${raw.commentor.firstName} ${raw.commentor.lastName}`,
+    comment: raw.comment,
+    editedAt: raw.editedAt,
+    createdAt: raw.commentedAt,
+    reactions: { likes: raw.likeCount, dislikes: raw.dislikeCount, userReaction: null },
+  };
+}
+
+function normalizeReview(raw: RawReview): Review {
+  const media: ReviewMedia[] = [
+    ...(raw.images ?? []).map((url, i) => ({ id: `img_${i}`, url, type: 'image' as const })),
+    ...(raw.video ? [{ id: 'video_0', url: raw.video, type: 'video' as const }] : []),
+  ];
+  const comments = (raw.comments ?? []).map(normalizeComment);
+  return {
+    id: raw.id,
+    boardingId: raw.boardingId,
+    authorId: raw.studentId,
+    reviewerName: `${raw.student.firstName} ${raw.student.lastName}`,
+    rating: raw.rating,
+    comment: raw.comment,
+    editedAt: raw.editedAt,
+    commentedAt: raw.commentedAt,
+    createdAt: raw.commentedAt,
+    media,
+    reactions: { likes: raw.likeCount, dislikes: raw.dislikeCount, userReaction: null },
+    comments,
+    _count: { comments: comments.length },
+  };
+}
+
+// ── API functions ─────────────────────────────────────────────────────────────
 
 export async function getReviewStats(boardingId: string) {
   const response = await api.get<UniStayApiResponse<ReviewStats>>(
@@ -22,18 +66,29 @@ export async function getBoardingReviewsById(
   boardingId: string,
   params: ReviewsQueryParams = {},
 ) {
-  const response = await api.get<UniStayApiResponse<ReviewsListResponse>>(
+  const response = await api.get<UniStayApiResponse<{ reviews: RawReview[]; pagination: ReviewsListResponse['pagination'] }>>(
     `/reviews/boarding/${boardingId}`,
     { params },
   );
-  return response.data;
+  const raw = response.data;
+  return {
+    ...raw,
+    data: {
+      reviews: (raw.data.reviews ?? []).map(normalizeReview),
+      pagination: raw.data.pagination,
+    },
+  };
 }
 
 export async function getReviewById(reviewId: string) {
-  const response = await api.get<UniStayApiResponse<Review>>(
+  const response = await api.get<UniStayApiResponse<RawReview>>(
     `/reviews/${reviewId}`,
   );
-  return response.data;
+  const raw = response.data;
+  return {
+    ...raw,
+    data: normalizeReview(raw.data),
+  };
 }
 
 export async function createReview(formData: FormData) {

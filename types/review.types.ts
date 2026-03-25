@@ -44,6 +44,43 @@ export interface Review {
   };
 }
 
+// ── Raw shapes returned by the API ──────────────────────────────────────────
+
+export interface ReviewPersonInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export interface RawReviewComment {
+  id: string;
+  reviewId: string;
+  commentorId: string;
+  comment: string;
+  likeCount: number;
+  dislikeCount: number;
+  commentedAt: string;
+  editedAt: string | null;
+  commentor: ReviewPersonInfo;
+}
+
+export interface RawReview {
+  id: string;
+  boardingId: string;
+  studentId: string;
+  rating: number;
+  comment: string | null;
+  images: string[];
+  video: string | null;
+  likeCount: number;
+  dislikeCount: number;
+  commentedAt: string;
+  editedAt: string | null;
+  student: ReviewPersonInfo;
+  comments: RawReviewComment[];
+}
+
 export interface ReviewStats {
   averageRating: number;
   totalReviews: number;
