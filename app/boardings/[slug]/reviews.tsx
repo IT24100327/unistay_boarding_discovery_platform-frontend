@@ -655,7 +655,7 @@ function ReviewCard({
     <View style={styles.reviewCard}>
       <View style={styles.reviewHeader}>
         <View style={styles.reviewAvatar}>
-          <Text style={styles.reviewAvatarText}>{review.reviewerName.charAt(0).toUpperCase()}</Text>
+          <Text style={styles.reviewAvatarText}>{review.reviewerName?.charAt(0).toUpperCase() ?? '?'}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
