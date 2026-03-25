@@ -248,7 +248,7 @@ function CommentItem({
         </View>
         <Text style={styles.commentContent}>{comment.comment}</Text>
         <View style={styles.commentFooter}>
-          <ReactionRow reactions={comment.reactions} onReact={onReact} />
+          <ReactionRow reactions={comment.reactions ?? { likes: 0, dislikes: 0, userReaction: null }} onReact={onReact} />
           {isOwner && (
             <View style={styles.commentActions}>
               {canEdit && (
@@ -692,7 +692,7 @@ function ReviewCard({
       {!!review.comment && <Text style={styles.reviewComment}>{review.comment}</Text>}
       {(review.media ?? []).length > 0 && <MediaGrid media={review.media} onPress={onMediaPress} />}
       <View style={styles.reviewFooter}>
-        <ReactionRow reactions={review.reactions} onReact={onReact} />
+        <ReactionRow reactions={review.reactions ?? { likes: 0, dislikes: 0, userReaction: null }} onReact={onReact} />
         <TouchableOpacity style={styles.replyBtn} onPress={onToggleComments}>
           <Ionicons name="chatbubble-outline" size={15} color={COLORS.gray} />
           <Text style={styles.replyBtnText}>{commentCount}</Text>
@@ -841,15 +841,16 @@ export default function BoardingReviewsScreen() {
     ]);
   };
 
-  const applyOptimisticReaction = (reactions: ReviewReactionSummary, type: ReactionType): ReviewReactionSummary => {
-    const prev = reactions.userReaction;
+  const applyOptimisticReaction = (reactions: ReviewReactionSummary | null | undefined, type: ReactionType): ReviewReactionSummary => {
+    const safe = reactions ?? { likes: 0, dislikes: 0, userReaction: null };
+    const prev = safe.userReaction;
     if (prev === type) {
-      return { userReaction: null, likes: type === 'LIKE' ? reactions.likes - 1 : reactions.likes, dislikes: type === 'DISLIKE' ? reactions.dislikes - 1 : reactions.dislikes };
+      return { userReaction: null, likes: type === 'LIKE' ? safe.likes - 1 : safe.likes, dislikes: type === 'DISLIKE' ? safe.dislikes - 1 : safe.dislikes };
     }
     return {
       userReaction: type,
-      likes: type === 'LIKE' ? reactions.likes + 1 : prev === 'LIKE' ? reactions.likes - 1 : reactions.likes,
-      dislikes: type === 'DISLIKE' ? reactions.dislikes + 1 : prev === 'DISLIKE' ? reactions.dislikes - 1 : reactions.dislikes,
+      likes: type === 'LIKE' ? safe.likes + 1 : prev === 'LIKE' ? safe.likes - 1 : safe.likes,
+      dislikes: type === 'DISLIKE' ? safe.dislikes + 1 : prev === 'DISLIKE' ? safe.dislikes - 1 : safe.dislikes,
     };
   };
 
