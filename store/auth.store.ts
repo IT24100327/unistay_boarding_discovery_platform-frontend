@@ -4,6 +4,8 @@ import { storage } from '@/lib/storage';
 import type { User } from '@/types/user.types';
 import type { RegisterData, LoginResponse, RefreshResponse } from '@/types/auth.types';
 import type { UniStayApiResponse } from '@/types/api.types';
+import { getCurrentUserProfile, updateCurrentUserProfile } from '@/lib/user';
+import type { UpdateProfileRequest } from '@/types/user.types';
 
 interface AuthState {
   user: User | null;
@@ -18,7 +20,8 @@ interface AuthState {
   setUser: (user: User) => void;
   setToken: (token: string) => void;
   setSelectedRole: (role: 'student' | 'owner') => void;
-  updateProfile: (data: Partial<User>) => Promise<void>;
+  updateProfile: (data: UpdateProfileRequest) => Promise<void>;
+  refreshProfile: () => Promise<void>;
   checkAuth: () => Promise<boolean>;
   hydrate: () => Promise<void>;
 }
@@ -84,13 +87,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateProfile: async (data) => {
     set({ isLoading: true });
     try {
-      const response = await api.put<UniStayApiResponse<{ user: User }>>('/users/me', data);
-      const updatedUser = response.data.data.user;
+      const updatedUser = await updateCurrentUserProfile(data);
       await storage.setUser(updatedUser);
       set({ user: updatedUser });
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  refreshProfile: async () => {
+    const user = await getCurrentUserProfile();
+    await storage.setUser(user);
+    set({ user });
   },
 
   checkAuth: async () => {
@@ -103,8 +111,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { accessToken, refreshToken: newRefreshToken } = response.data.data;
       await storage.setToken(accessToken);
       await storage.setRefreshToken(newRefreshToken);
-      const user = await storage.getUser<User>();
-      if (!user) return false;
+      const user = await getCurrentUserProfile();
+      await storage.setUser(user);
       set({ token: accessToken, refreshToken: newRefreshToken, user, isAuthenticated: true });
       return true;
     } catch {
@@ -118,7 +126,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const refreshToken = await storage.getRefreshToken();
     const user = await storage.getUser<User>();
     if (token && refreshToken && user) {
-      set({ token, refreshToken, user, isAuthenticated: true });
+      try {
+        const freshUser = await getCurrentUserProfile();
+        await storage.setUser(freshUser);
+        set({ token, refreshToken, user: freshUser, isAuthenticated: true });
+      } catch {
+        set({ token, refreshToken, user, isAuthenticated: true });
+      }
     }
   },
 }));

@@ -8,9 +8,14 @@ export interface User {
   role: UserRole;
   username?: string;
   avatar?: string;
+  profileImageUrl?: string | null;
   phone?: string;
   university?: string;
   nicNumber?: string;
+  studyYear?: number;
+  degree?: string;
+  gender?: string;
+  dateOfBirth?: string;
   isVerified: boolean;
   isActive: boolean;
   createdAt: string;
@@ -23,5 +28,10 @@ export interface UpdateProfileRequest {
   phone?: string;
   university?: string;
   nicNumber?: string;
-  avatar?: string;
+  studyYear?: number;
+  degree?: string;
+  role?: Extract<UserRole, 'STUDENT' | 'OWNER'>;
+  email?: string;
+  gender?: string;
+  dateOfBirth?: string;
 }
