@@ -62,7 +62,7 @@ export default function EditProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title="Edit Profile" />
+      <Header title="Profile Settings" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -169,10 +169,7 @@ export default function EditProfileScreen() {
             style={styles.saveBtn}
           />
 
-          <TouchableOpacity
-            style={styles.changePasswordBtn}
-            onPress={() => router.push('/profile/change-password')}
-          >
+          <TouchableOpacity style={styles.changePasswordBtn} onPress={() => router.push('/profile/change-password')}>
             <Ionicons name="lock-closed-outline" size={16} color={COLORS.primary} />
             <Text style={styles.changePasswordText}>Change Password</Text>
           </TouchableOpacity>

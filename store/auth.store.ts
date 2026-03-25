@@ -7,6 +7,15 @@ import type { UniStayApiResponse } from '@/types/api.types';
 import { getCurrentUserProfile, updateCurrentUserProfile } from '@/lib/user';
 import type { UpdateProfileRequest } from '@/types/user.types';
 
+const mergeUserData = (preferred: User, fallback: User | null): User => ({
+  ...fallback,
+  ...preferred,
+  profileImageUrl:
+    preferred.profileImageUrl ?? fallback?.profileImageUrl ?? null,
+  phone: preferred.phone ?? fallback?.phone,
+  university: preferred.university ?? fallback?.university,
+}) as User;
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -45,11 +54,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         email,
         password,
       });
-      const { accessToken, refreshToken, user } = response.data.data;
+      const { accessToken, refreshToken, user: loginUser } = response.data.data;
       await storage.setToken(accessToken);
       await storage.setRefreshToken(refreshToken);
-      await storage.setUser(user);
-      set({ token: accessToken, refreshToken, user, isAuthenticated: true });
+      const meUser = await getCurrentUserProfile();
+      const mergedUser = mergeUserData(meUser, loginUser);
+      await storage.setUser(mergedUser);
+      set({ token: accessToken, refreshToken, user: mergedUser, isAuthenticated: true });
     } finally {
       set({ isLoading: false });
     }
@@ -87,18 +98,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateProfile: async (data) => {
     set({ isLoading: true });
     try {
+      const currentUser = get().user;
       const updatedUser = await updateCurrentUserProfile(data);
-      await storage.setUser(updatedUser);
-      set({ user: updatedUser });
+      const mergedUser = mergeUserData(updatedUser, currentUser);
+      await storage.setUser(mergedUser);
+      set({ user: mergedUser });
     } finally {
       set({ isLoading: false });
     }
   },
 
   refreshProfile: async () => {
+    const currentUser = get().user;
     const user = await getCurrentUserProfile();
-    await storage.setUser(user);
-    set({ user });
+    const mergedUser = mergeUserData(user, currentUser);
+    await storage.setUser(mergedUser);
+    set({ user: mergedUser });
   },
 
   checkAuth: async () => {
@@ -112,8 +127,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await storage.setToken(accessToken);
       await storage.setRefreshToken(newRefreshToken);
       const user = await getCurrentUserProfile();
-      await storage.setUser(user);
-      set({ token: accessToken, refreshToken: newRefreshToken, user, isAuthenticated: true });
+      const storedUser = await storage.getUser<User>();
+      const mergedUser = mergeUserData(user, storedUser);
+      await storage.setUser(mergedUser);
+      set({
+        token: accessToken,
+        refreshToken: newRefreshToken,
+        user: mergedUser,
+        isAuthenticated: true,
+      });
       return true;
     } catch {
       await get().logout();
@@ -128,8 +150,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (token && refreshToken && user) {
       try {
         const freshUser = await getCurrentUserProfile();
-        await storage.setUser(freshUser);
-        set({ token, refreshToken, user: freshUser, isAuthenticated: true });
+        const mergedUser = mergeUserData(freshUser, user);
+        await storage.setUser(mergedUser);
+        set({ token, refreshToken, user: mergedUser, isAuthenticated: true });
       } catch {
         set({ token, refreshToken, user, isAuthenticated: true });
       }
