@@ -21,10 +21,10 @@ export const COLORS = {
 export const API_URL = 'http://localhost:3000/api';
 
 export const STORAGE_KEYS = {
-  TOKEN: 'uniboard_token',
-  REFRESH_TOKEN: 'uniboard_refresh_token',
-  USER: 'uniboard_user',
-  ONBOARDING_DONE: 'uniboard_onboarding_done',
+  TOKEN: 'unistay_token',
+  REFRESH_TOKEN: 'unistay_refresh_token',
+  USER: 'unistay_user',
+  ONBOARDING_DONE: 'unistay_onboarding_done',
 };
 
 export const APP_VERSION = '2.4.0';

@@ -59,7 +59,7 @@ export default function LoginScreen() {
           <View style={styles.logo}>
             <Text style={styles.logoIcon}>🎓</Text>
           </View>
-          <Text style={styles.logoTitle}>UniBoard</Text>
+          <Text style={styles.logoTitle}>UniStay</Text>
           <Text style={styles.logoSubtitle}>
             Find your perfect university home away from home.
           </Text>

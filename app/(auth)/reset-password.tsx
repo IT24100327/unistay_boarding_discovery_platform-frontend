@@ -57,7 +57,7 @@ export default function ResetPasswordScreen() {
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
-          <Text style={styles.headerBrand}>UniBoard</Text>
+          <Text style={styles.headerBrand}>UniStay</Text>
         </View>
 
         <Text style={styles.heading}>Set New Password</Text>

@@ -4,14 +4,16 @@ import { useBoardingStore } from '@/store/boarding.store';
 import { saveBoarding, unsaveBoarding } from '@/lib/saved-boarding';
 
 export function useSaveBoarding(boardingId: string) {
-  const { isSaved, toggleSaved } = useBoardingStore();
+  // Use a fine-grained selector so each card only re-renders when its own
+  // saved state changes, and updates immediately after a toggle.
+  const saved = useBoardingStore((state) => state.savedIds.includes(boardingId));
+  const toggleSaved = useBoardingStore((state) => state.toggleSaved);
   const [isSaving, setIsSaving] = useState(false);
-  const saved = isSaved(boardingId);
 
   const toggleSave = async () => {
     if (isSaving) return;
     // Capture current state before the optimistic update
-    const wasSaved = isSaved(boardingId);
+    const wasSaved = saved;
     // Optimistic update
     toggleSaved(boardingId);
     setIsSaving(true);
