@@ -64,8 +64,8 @@ export async function deleteReview(reviewId: string) {
 
 export async function reactToReview(reviewId: string, reactionType: ReactionType) {
   const response = await api.post<
-    UniStayApiResponse<{ action: ReactionAction; reactionType: ReactionType }>
-  >(`/reviews/${reviewId}/reactions`, { reactionType });
+    UniStayApiResponse<{ action: ReactionAction; type: ReactionType }>
+  >(`/reviews/${reviewId}/reactions`, { type: reactionType });
   return response.data;
 }
 
@@ -77,32 +77,24 @@ export async function addComment(reviewId: string, payload: CreateCommentPayload
   return response.data;
 }
 
-export async function updateComment(
-  reviewId: string,
-  commentId: string,
-  payload: UpdateCommentPayload,
-) {
+export async function updateComment(commentId: string, payload: UpdateCommentPayload) {
   const response = await api.put<UniStayApiResponse<{ comment: ReviewComment }>>(
-    `/reviews/${reviewId}/comments/${commentId}`,
+    `/reviews/comments/${commentId}`,
     payload,
   );
   return response.data;
 }
 
-export async function deleteComment(reviewId: string, commentId: string) {
+export async function deleteComment(commentId: string) {
   const response = await api.delete<UniStayApiResponse<null>>(
-    `/reviews/${reviewId}/comments/${commentId}`,
+    `/reviews/comments/${commentId}`,
   );
   return response.data;
 }
 
-export async function reactToComment(
-  reviewId: string,
-  commentId: string,
-  reactionType: ReactionType,
-) {
+export async function reactToComment(commentId: string, reactionType: ReactionType) {
   const response = await api.post<
-    UniStayApiResponse<{ action: ReactionAction; reactionType: ReactionType }>
-  >(`/reviews/${reviewId}/comments/${commentId}/reactions`, { reactionType });
+    UniStayApiResponse<{ action: ReactionAction; type: ReactionType }>
+  >(`/reviews/comments/${commentId}/reactions`, { type: reactionType });
   return response.data;
 }

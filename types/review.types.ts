@@ -19,7 +19,7 @@ export interface ReviewComment {
   authorId: string;
   authorName: string;
   authorAvatar?: string;
-  content: string;
+  comment: string;
   editedAt: string | null;
   createdAt: string;
   reactions: ReviewReactionSummary;
@@ -47,7 +47,7 @@ export interface Review {
 export interface ReviewStats {
   averageRating: number;
   totalReviews: number;
-  distribution: {
+  ratingDistribution: {
     1: number;
     2: number;
     3: number;
@@ -70,11 +70,11 @@ export interface CreateReviewPayload {
 }
 
 export interface CreateCommentPayload {
-  content: string;
+  comment: string;
 }
 
 export interface UpdateCommentPayload {
-  content: string;
+  comment: string;
 }
 
 export interface ReviewsListResponse {

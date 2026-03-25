@@ -48,8 +48,8 @@ const MAX_IMAGES = 5;
 const MAX_FILE_MB = 10;
 const MAX_COMMENT_CHARS = 500;
 const MAX_REVIEW_CHARS = 1000;
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm'];
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const RATING_KEYS = [1, 2, 3, 4, 5] as const;
 type RatingKey = (typeof RATING_KEYS)[number];
 
@@ -246,7 +246,7 @@ function CommentItem({
             {new Date(comment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </Text>
         </View>
-        <Text style={styles.commentContent}>{comment.content}</Text>
+        <Text style={styles.commentContent}>{comment.comment}</Text>
         <View style={styles.commentFooter}>
           <ReactionRow reactions={comment.reactions} onReact={onReact} />
           {isOwner && (
@@ -299,11 +299,11 @@ function WriteReviewModal({ visible, boardingId, editTarget, onClose, onSuccess 
       return false;
     }
     if (mediaType === 'image' && !ALLOWED_IMAGE_TYPES.includes(mimeType)) {
-      Toast.show({ type: 'error', text1: 'Invalid format', text2: 'Allowed: JPG, PNG, WEBP.' });
+      Toast.show({ type: 'error', text1: 'Invalid format', text2: 'Allowed: JPG, PNG, GIF, WEBP.' });
       return false;
     }
     if (mediaType === 'video' && !ALLOWED_VIDEO_TYPES.includes(mimeType)) {
-      Toast.show({ type: 'error', text1: 'Invalid format', text2: 'Allowed: MP4, WEBM.' });
+      Toast.show({ type: 'error', text1: 'Invalid format', text2: 'Allowed: MP4, WEBM, MOV.' });
       return false;
     }
     return true;
@@ -413,7 +413,7 @@ function WriteReviewModal({ visible, boardingId, editTarget, onClose, onSuccess 
           />
           <Text style={styles.charCounter}>{commentText.length} / {MAX_REVIEW_CHARS}</Text>
           <Text style={[styles.fieldLabel, { marginTop: 20 }]}>
-            Photos (max {MAX_IMAGES}) — JPG, PNG, WEBP · max {MAX_FILE_MB}MB each
+            Photos (max {MAX_IMAGES}) — JPG, PNG, GIF, WEBP · max {MAX_FILE_MB}MB each
           </Text>
           <View style={styles.mediaPickerRow}>
             {pickedImages.map((img) => (
@@ -435,7 +435,7 @@ function WriteReviewModal({ visible, boardingId, editTarget, onClose, onSuccess 
             )}
           </View>
           <Text style={[styles.fieldLabel, { marginTop: 20 }]}>
-            Video (max 1) — MP4, WEBM · max {MAX_FILE_MB}MB
+            Video (max 1) — MP4, WEBM, MOV · max {MAX_FILE_MB}MB
           </Text>
           {pickedVideo ? (
             <View style={styles.videoPreview}>
@@ -605,7 +605,7 @@ function CommentThread({
       {editTarget && (
         <EditCommentModal
           visible
-          initialContent={editTarget.content}
+          initialContent={editTarget.comment}
           onClose={() => setEditTarget(null)}
           onSave={async (content) => { await onEditComment(editTarget.id, content); setEditTarget(null); }}
         />
@@ -803,7 +803,7 @@ export default function BoardingReviewsScreen() {
   };
 
   const handleAddComment = async (reviewId: string, content: string) => {
-    const res = await addComment(reviewId, { content });
+    const res = await addComment(reviewId, { comment: content });
     setReviewComments((prev) => ({ ...prev, [reviewId]: [...(prev[reviewId] ?? []), res.data.comment] }));
     setReviews((prev) =>
       prev.map((r) => r.id === reviewId ? { ...r, _count: { comments: (r._count?.comments ?? 0) + 1 } } : r)
@@ -811,7 +811,7 @@ export default function BoardingReviewsScreen() {
   };
 
   const handleEditComment = async (reviewId: string, commentId: string, content: string) => {
-    const res = await updateComment(reviewId, commentId, { content });
+    const res = await updateComment(commentId, { comment: content });
     setReviewComments((prev) => ({
       ...prev,
       [reviewId]: (prev[reviewId] ?? []).map((c) => c.id === commentId ? res.data.comment : c),
@@ -825,7 +825,7 @@ export default function BoardingReviewsScreen() {
         text: 'Delete', style: 'destructive',
         onPress: async () => {
           try {
-            await deleteComment(reviewId, commentId);
+            await deleteComment(commentId);
             setReviewComments((prev) => ({ ...prev, [reviewId]: (prev[reviewId] ?? []).filter((c) => c.id !== commentId) }));
             setReviews((prev) =>
               prev.map((r) => r.id === reviewId ? { ...r, _count: { comments: Math.max(0, (r._count?.comments ?? 1) - 1) } } : r)
@@ -869,7 +869,7 @@ export default function BoardingReviewsScreen() {
       ...all,
       [reviewId]: prevComments.map((c) => c.id === commentId ? { ...c, reactions: applyOptimisticReaction(c.reactions, type) } : c),
     }));
-    try { await reactToComment(reviewId, commentId, type); }
+    try { await reactToComment(commentId, type); }
     catch {
       setReviewComments((all) => ({ ...all, [reviewId]: prevComments.map((c) => c.id === commentId ? { ...c, reactions: prevReactions } : c) }));
       Toast.show({ type: 'error', text1: 'Reaction failed', text2: 'Please try again.' });
@@ -893,9 +893,9 @@ export default function BoardingReviewsScreen() {
           ...stats,
           totalReviews: newTotal,
           averageRating: newAvg,
-          distribution: {
-            ...stats.distribution,
-            [ratingKey]: (stats.distribution[ratingKey] ?? 0) + 1,
+          ratingDistribution: {
+            ...stats.ratingDistribution,
+            [ratingKey]: (stats.ratingDistribution[ratingKey] ?? 0) + 1,
           },
         });
       }
@@ -957,7 +957,7 @@ export default function BoardingReviewsScreen() {
                 <RatingBar
                   key={s}
                   stars={s}
-                  count={stats?.distribution[s] ?? 0}
+                  count={stats?.ratingDistribution[s] ?? 0}
                   total={totalReviews}
                 />
               ))}
