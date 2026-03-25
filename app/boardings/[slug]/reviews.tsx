@@ -372,8 +372,9 @@ function WriteReviewModal({ visible, boardingId, editTarget, onClose, onSuccess 
         } as unknown as Blob);
       }
       const result = isEdit && editTarget ? await updateReview(editTarget.id, formData) : await createReview(formData);
+      const reviewRes = await getReviewById(result.data.id);
       Toast.show({ type: 'success', text1: isEdit ? 'Review updated' : 'Review submitted' });
-      onSuccess(result.data.review);
+      onSuccess(reviewRes.data);
     } catch {
       Toast.show({ type: 'error', text1: 'Submission failed', text2: 'Please try again.' });
     } finally {
@@ -741,8 +742,8 @@ export default function BoardingReviewsScreen() {
       const b = boardingRef.current;
       if (!b) return;
       const res = await getBoardingReviewsById(b.id, { page: pageNum, limit: PAGE_LIMIT, sortBy: sb, sortOrder: so });
-      const newReviews = res.data ?? [];
-      const { pagination } = res;
+      const newReviews = res.data.reviews ?? [];
+      const { pagination } = res.data;
       setReviews((prev) => (append ? [...prev, ...newReviews] : newReviews));
       setPage(pagination.page);
       setTotalPages(pagination.totalPages);
@@ -796,7 +797,7 @@ export default function BoardingReviewsScreen() {
     setLoadingComments((prev) => new Set([...prev, reviewId]));
     try {
       const res = await getReviewById(reviewId);
-      setReviewComments((prev) => ({ ...prev, [reviewId]: res.data.review.comments ?? [] }));
+      setReviewComments((prev) => ({ ...prev, [reviewId]: res.data.comments ?? [] }));
     } catch { Toast.show({ type: 'error', text1: 'Failed to load comments' }); }
     finally {
       setLoadingComments((prev) => { const n = new Set(prev); n.delete(reviewId); return n; });
@@ -804,8 +805,9 @@ export default function BoardingReviewsScreen() {
   };
 
   const handleAddComment = async (reviewId: string, content: string) => {
-    const res = await addComment(reviewId, { comment: content });
-    setReviewComments((prev) => ({ ...prev, [reviewId]: [...(prev[reviewId] ?? []), res.data.comment] }));
+    await addComment(reviewId, { comment: content });
+    const reviewRes = await getReviewById(reviewId);
+    setReviewComments((prev) => ({ ...prev, [reviewId]: reviewRes.data.comments ?? [] }));
     setReviews((prev) =>
       prev.map((r) => r.id === reviewId ? { ...r, _count: { comments: (r._count?.comments ?? 0) + 1 } } : r)
     );
@@ -815,7 +817,9 @@ export default function BoardingReviewsScreen() {
     const res = await updateComment(commentId, { comment: content });
     setReviewComments((prev) => ({
       ...prev,
-      [reviewId]: (prev[reviewId] ?? []).map((c) => c.id === commentId ? res.data.comment : c),
+      [reviewId]: (prev[reviewId] ?? []).map((c) =>
+        c.id === commentId ? { ...c, comment: content, editedAt: res.data.editedAt } : c
+      ),
     }));
   };
 

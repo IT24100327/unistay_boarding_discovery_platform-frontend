@@ -3,9 +3,8 @@ import type { UniStayApiResponse } from '@/types/api.types';
 import type {
   Review,
   ReviewStats,
-  ReviewComment,
+  ReviewsListResponse,
   ReviewsQueryParams,
-  ReviewsApiResponse,
   ReactionType,
   ReactionAction,
   CreateCommentPayload,
@@ -23,7 +22,7 @@ export async function getBoardingReviewsById(
   boardingId: string,
   params: ReviewsQueryParams = {},
 ) {
-  const response = await api.get<ReviewsApiResponse>(
+  const response = await api.get<UniStayApiResponse<ReviewsListResponse>>(
     `/reviews/boarding/${boardingId}`,
     { params },
   );
@@ -31,14 +30,14 @@ export async function getBoardingReviewsById(
 }
 
 export async function getReviewById(reviewId: string) {
-  const response = await api.get<UniStayApiResponse<{ review: Review }>>(
+  const response = await api.get<UniStayApiResponse<Review>>(
     `/reviews/${reviewId}`,
   );
   return response.data;
 }
 
 export async function createReview(formData: FormData) {
-  const response = await api.post<UniStayApiResponse<{ review: Review }>>(
+  const response = await api.post<UniStayApiResponse<{ id: string; boardingId: string; studentId: string }>>(
     '/reviews',
     formData,
     { headers: { 'Content-Type': 'multipart/form-data' } },
@@ -47,7 +46,7 @@ export async function createReview(formData: FormData) {
 }
 
 export async function updateReview(reviewId: string, formData: FormData) {
-  const response = await api.put<UniStayApiResponse<{ review: Review }>>(
+  const response = await api.put<UniStayApiResponse<{ id: string; editedAt: string }>>(
     `/reviews/${reviewId}`,
     formData,
     { headers: { 'Content-Type': 'multipart/form-data' } },
@@ -70,7 +69,7 @@ export async function reactToReview(reviewId: string, reactionType: ReactionType
 }
 
 export async function addComment(reviewId: string, payload: CreateCommentPayload) {
-  const response = await api.post<UniStayApiResponse<{ comment: ReviewComment }>>(
+  const response = await api.post<UniStayApiResponse<{ id: string; reviewId: string; commentor: Record<string, unknown> }>>(
     `/reviews/${reviewId}/comments`,
     payload,
   );
@@ -78,7 +77,7 @@ export async function addComment(reviewId: string, payload: CreateCommentPayload
 }
 
 export async function updateComment(commentId: string, payload: UpdateCommentPayload) {
-  const response = await api.put<UniStayApiResponse<{ comment: ReviewComment }>>(
+  const response = await api.put<UniStayApiResponse<{ id: string; editedAt: string }>>(
     `/reviews/comments/${commentId}`,
     payload,
   );
