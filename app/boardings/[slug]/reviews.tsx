@@ -804,8 +804,7 @@ export default function BoardingReviewsScreen() {
   };
 
   const handleAddComment = async (reviewId: string, content: string) => {
-    if (!user?.id) return;
-    const res = await addComment(reviewId, { userId: user.id, comment: content });
+    const res = await addComment(reviewId, { comment: content });
     setReviewComments((prev) => ({ ...prev, [reviewId]: [...(prev[reviewId] ?? []), res.data.comment] }));
     setReviews((prev) =>
       prev.map((r) => r.id === reviewId ? { ...r, _count: { comments: (r._count?.comments ?? 0) + 1 } } : r)
