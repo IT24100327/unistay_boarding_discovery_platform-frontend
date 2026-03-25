@@ -748,7 +748,7 @@ function OwnerHome({ firstName }: { firstName: string }) {
           <View style={[styles.quickActionIcon, { backgroundColor: '#FFF7ED' }]}>
             <Ionicons name="star-outline" size={22} color={COLORS.orange} />
           </View>
-          <Text style={styles.quickActionLabel}>Boarding Reviews</Text>
+          <Text style={styles.quickActionLabel}>Reviews</Text>
         </TouchableOpacity>
       </View>
 
