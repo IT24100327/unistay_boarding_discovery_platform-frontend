@@ -5,7 +5,7 @@ module.exports = {
     '^.+\\.[jt]sx?$': ['babel-jest', { configFile: './babel.config.js' }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(expo-secure-store|@react-native-async-storage)/)',
+    'node_modules/(?!(expo-secure-store|expo-router|expo-constants|expo-modules-core|@expo|react-native|@react-native|@react-native-async-storage)/)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
